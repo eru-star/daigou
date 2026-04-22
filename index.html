@@ -82,6 +82,8 @@ tr:hover td{background:#fafafa}
 .toast.on{opacity:1}
 .pg{display:none}.pg.on{display:block}
 .lk{color:#3182ce;cursor:pointer;text-decoration:underline}
+.sbar{padding:12px 14px;border-top:1px solid #2d3748;margin-top:auto}
+.sbar button{width:100%;margin-bottom:6px;font-size:11px}
 @media print{.sidebar,.topbar,.np{display:none!important}}
 </style>
 </head>
@@ -96,14 +98,14 @@ tr:hover td{background:#fafafa}
     <div class="nv" onclick="goPage('rc')">&#128230; 入庫驗收</div>
     <div class="nv" onclick="goPage('dv')">&#128666; 出貨銷貨</div>
     <div class="nv" onclick="goPage('rp')">&#128200; 月營收報表</div>
-    <div style="margin-top:auto;padding:12px 14px;border-top:1px solid #2d3748">
-      <div id="sync-status" style="font-size:11px;margin-bottom:8px;color:#68d391">⏳ 連線中...</div>
-      <button class="btn bs" style="width:100%;margin-bottom:6px;font-size:11px" onclick="gsLoad()">&#9749; 從雲端載入</button>
-      <button class="btn bp" style="width:100%;margin-bottom:6px;font-size:11px" onclick="gsSave()">&#9729; 儲存至雲端</button>
-      <button class="btn bt" style="width:100%;margin-bottom:6px;font-size:11px" onclick="exportJSON()">&#128190; 匯出JSON備份</button>
-      <label style="display:block;width:100%">
-        <span class="btn bw" style="width:100%;display:block;text-align:center;font-size:11px;cursor:pointer">&#128228; 匯入JSON還原</span>
-        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(this)">
+    <div class="sbar">
+      <div id="sync-status" style="font-size:11px;margin-bottom:8px;color:#68d391">&#9729; 連線中...</div>
+      <button class="btn bs" onclick="gsLoad()">&#9749; 從雲端載入</button>
+      <button class="btn bp" onclick="gsSave()">&#9729; 儲存至雲端</button>
+      <button class="btn bt" onclick="exportJSON()">&#128190; 匯出JSON備份</button>
+      <label style="display:block">
+        <span class="btn bw" style="width:100%;display:block;text-align:center;cursor:pointer">&#128228; 匯入JSON還原</span>
+        <input type="file" id="imp-file" accept=".json" style="display:none" onchange="importJSON(this)">
       </label>
     </div>
   </div>
@@ -271,14 +273,12 @@ tr:hover td{background:#fafafa}
   </div>
 </div>
 
-<!-- SO Detail -->
 <div class="ov" id="mo-sodv">
   <div class="md"><h2 id="sodv-tt">訂單詳情</h2><div id="sodv-b"></div>
     <div class="mf np"><button class="btn bo" onclick="closeM('mo-sodv')">關閉</button></div>
   </div>
 </div>
 
-<!-- PO Modal -->
 <div class="ov" id="mo-po">
   <div class="md">
     <h2 id="po-tt">新增採購訂單</h2>
@@ -311,21 +311,18 @@ tr:hover td{background:#fafafa}
   </div>
 </div>
 
-<!-- PO Detail -->
 <div class="ov" id="mo-podv">
   <div class="md"><h2 id="podv-tt">採購單詳情</h2><div id="podv-b"></div>
     <div class="mf np"><button class="btn bo" onclick="closeM('mo-podv')">關閉</button></div>
   </div>
 </div>
 
-<!-- PO Unreceived -->
 <div class="ov" id="mo-urcv">
   <div class="md"><h2>全部未到貨商品</h2><div id="urcv-b"></div>
     <div class="mf np"><button class="btn bo" onclick="closeM('mo-urcv')">關閉</button></div>
   </div>
 </div>
 
-<!-- SG Modal -->
 <div class="ov" id="mo-sg">
   <div class="md mdsm"><h2 id="sg-tt">新增倉庫總單</h2>
     <div class="fg"><label>倉庫總單號</label><input id="sg-no"></div>
@@ -336,7 +333,6 @@ tr:hover td{background:#fafafa}
   </div>
 </div>
 
-<!-- Ship Edit -->
 <div class="ov" id="mo-se">
   <div class="md mdsm"><h2>修正寄件資訊</h2>
     <div class="fg" style="margin-bottom:7px"><label>物流商</label>
@@ -353,14 +349,12 @@ tr:hover td{background:#fafafa}
   </div>
 </div>
 
-<!-- RCV Detail -->
 <div class="ov" id="mo-rcdv">
   <div class="md"><h2 id="rcdv-tt">驗收詳情</h2><div id="rcdv-b"></div>
     <div class="mf np"><button class="btn bo" onclick="closeM('mo-rcdv')">關閉</button></div>
   </div>
 </div>
 
-<!-- DLV Modal -->
 <div class="ov" id="mo-dv">
   <div class="md mdsm"><h2>出貨資訊</h2>
     <div class="fg" style="margin-bottom:7px"><label>超商寄件單號</label><input id="dv-tr"></div>
@@ -375,7 +369,6 @@ tr:hover td{background:#fafafa}
   </div>
 </div>
 
-<!-- Print Modal -->
 <div class="ov" id="mo-pr">
   <div class="md"><h2>出貨單</h2><div id="pr-b"></div>
     <div class="mf np">
@@ -388,15 +381,13 @@ tr:hover td{background:#fafafa}
 <div class="toast" id="toast"></div>
 
 <script>
+var GS_URL = 'https://script.google.com/macros/s/AKfycbwMAznFmMPgnIDiydT8j87JYMQ66L1OM_bQBjrqrld28kf1WduW6MYQzJwvrhqBEsvg/exec';
+var GS_BUSY = false;
 var DB = { so: [], po: [], sg: [] };
 
 function loadDB() {
-  function tryLoad(k) {
-    try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; }
-  }
-  DB.so = tryLoad('v10so');
-  DB.po = tryLoad('v10po');
-  DB.sg = tryLoad('v10sg');
+  function t(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch(e) { return []; } }
+  DB.so = t('v10so'); DB.po = t('v10po'); DB.sg = t('v10sg');
 }
 
 function persist() {
@@ -404,40 +395,103 @@ function persist() {
     localStorage.setItem('v10so', JSON.stringify(DB.so));
     localStorage.setItem('v10po', JSON.stringify(DB.po));
     localStorage.setItem('v10sg', JSON.stringify(DB.sg));
-  } catch (e) {}
+  } catch(e) {}
   gsSave();
 }
 
-function uid(p) {
-  return p + '-' + Date.now().toString(36).toUpperCase();
-}
+function uid(p) { return p + '-' + Date.now().toString(36).toUpperCase(); }
 
 function showToast(m) {
   var t = document.getElementById('toast');
-  t.textContent = m;
-  t.classList.add('on');
-  setTimeout(function () { t.classList.remove('on'); }, 2500);
+  t.textContent = m; t.classList.add('on');
+  setTimeout(function() { t.classList.remove('on'); }, 2500);
 }
 
 function H(s) {
   if (s === null || s === undefined) { return ''; }
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function N(v) {
-  var f = parseFloat(v);
-  return isNaN(f) ? 0 : f;
+function N(v) { var f = parseFloat(v); return isNaN(f) ? 0 : f; }
+
+function setSyncStatus(state) {
+  var el = document.getElementById('sync-status');
+  if (!el) { return; }
+  if (state === 'syncing') { el.textContent = '&#9203; 同步中...'; el.style.color = '#fbd38d'; }
+  else if (state === 'ok') { el.textContent = '&#10003; 已同步'; el.style.color = '#68d391'; }
+  else { el.textContent = '&#10007; 同步失敗'; el.style.color = '#fc8181'; }
 }
 
-var PAGE_TITLES = {
-  db: '總覽', so: '銷售訂單 SO', po: '採購訂單 PO',
-  sh: '日本出貨', rc: '入庫驗收', dv: '出貨銷貨', rp: '月營收報表'
-};
+function gsSave() {
+  if (GS_BUSY) { return; }
+  GS_BUSY = true;
+  setSyncStatus('syncing');
+  var payload = JSON.stringify({ so: DB.so, po: DB.po, sg: DB.sg });
+  var form = new FormData();
+  form.append('action', 'write');
+  form.append('data', payload);
+  fetch(GS_URL, { method: 'POST', body: form })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      GS_BUSY = false;
+      setSyncStatus(res.ok ? 'ok' : 'err');
+      if (!res.ok) { showToast('雲端儲存失敗'); }
+    })
+    .catch(function() {
+      GS_BUSY = false;
+      setSyncStatus('err');
+      showToast('雲端連線失敗，資料已存本機');
+    });
+}
+
+function gsLoad() {
+  setSyncStatus('syncing');
+  fetch(GS_URL + '?action=read')
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (!res.ok) { setSyncStatus('err'); showToast('載入失敗'); return; }
+      if (!res.so.length && !res.po.length && !res.sg.length) {
+        setSyncStatus('ok'); showToast('雲端無資料，使用本機資料'); return;
+      }
+      DB.so = res.so; DB.po = res.po; DB.sg = res.sg;
+      try {
+        localStorage.setItem('v10so', JSON.stringify(DB.so));
+        localStorage.setItem('v10po', JSON.stringify(DB.po));
+        localStorage.setItem('v10sg', JSON.stringify(DB.sg));
+      } catch(e) {}
+      initMonths(); drawDB(); setSyncStatus('ok');
+      showToast('已從 Google Sheets 載入資料');
+    })
+    .catch(function() { setSyncStatus('err'); showToast('雲端連線失敗，使用本機資料'); });
+}
+
+function exportJSON() {
+  var data = { version: 1, exportedAt: new Date().toISOString(), so: DB.so, po: DB.po, sg: DB.sg };
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = '代購管理備份_' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('已匯出備份檔案');
+}
+
+function importJSON(input) {
+  var file = input.files[0]; if (!file) { return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (!data.so || !data.po || !data.sg) { showToast('檔案格式錯誤'); input.value = ''; return; }
+      if (!confirm('確定匯入？將覆蓋所有現有資料。')) { input.value = ''; return; }
+      DB.so = data.so; DB.po = data.po; DB.sg = data.sg;
+      persist(); initMonths(); drawDB(); input.value = '';
+      showToast('匯入成功！共 ' + DB.so.length + ' 筆SO、' + DB.po.length + ' 筆PO');
+    } catch(err) { showToast('匯入失敗：檔案損毀'); input.value = ''; }
+  };
+  reader.readAsText(file);
+}
+
+var PAGE_TITLES = { db:'總覽', so:'銷售訂單 SO', po:'採購訂單 PO', sh:'日本出貨', rc:'入庫驗收', dv:'出貨銷貨', rp:'月營收報表' };
 
 function goPage(p) {
   var pgs = document.querySelectorAll('.pg');
@@ -448,89 +502,64 @@ function goPage(p) {
   for (var j = 0; j < nvs.length; j++) { nvs[j].classList.remove('on'); }
   var target = "goPage('" + p + "')";
   for (var k = 0; k < nvs.length; k++) {
-    var oc = nvs[k].getAttribute('onclick') || '';
-    if (oc.indexOf(target) !== -1) { nvs[k].classList.add('on'); }
+    if ((nvs[k].getAttribute('onclick') || '').indexOf(target) !== -1) { nvs[k].classList.add('on'); }
   }
   document.getElementById('ptitle').textContent = PAGE_TITLES[p] || '';
-  var fns = { db: drawDB, so: drawSO, po: drawPO, sh: drawSH, rc: drawRC, dv: drawDV, rp: drawRP };
+  var fns = { db:drawDB, so:drawSO, po:drawPO, sh:drawSH, rc:drawRC, dv:drawDV, rp:drawRP };
   if (fns[p]) { fns[p](); }
 }
 
 function openM(id) { document.getElementById(id).classList.add('on'); }
 function closeM(id) { document.getElementById(id).classList.remove('on'); }
 
-var SL = {
-  wait: '待採購', ordered: '已採購', shipped: '已出貨',
-  arrived: '已到貨', done: '已出貨給客戶', partial: '部分到貨'
-};
-var SC = {
-  wait: 'bwt', ordered: 'bor', shipped: 'bsh',
-  arrived: 'bar', done: 'bdn', partial: 'bpa'
-};
-
-function bdg(s) {
-  return '<span class="bg ' + (SC[s] || '') + '">' + (SL[s] || H(s)) + '</span>';
-}
+var SL = { wait:'待採購', ordered:'已採購', shipped:'已出貨', arrived:'已到貨', done:'已出貨給客戶', partial:'部分到貨' };
+var SC = { wait:'bwt', ordered:'bor', shipped:'bsh', arrived:'bar', done:'bdn', partial:'bpa' };
+function bdg(s) { return '<span class="bg ' + (SC[s]||'') + '">' + (SL[s]||H(s)) + '</span>'; }
 
 function chips(items) {
   if (!items || !items.length) { return '-'; }
   var out = '';
   for (var i = 0; i < items.length; i++) {
-    var it = items[i];
-    out += '<span class="ck">' + H(it.name) + (it.jan ? ' (' + H(it.jan) + ')' : '') + ' x' + it.qty + '</span>';
+    out += '<span class="ck">' + H(items[i].name) + (items[i].jan ? ' (' + H(items[i].jan) + ')' : '') + ' x' + items[i].qty + '</span>';
   }
   return out;
 }
 
 function soChips(items) {
   var nos = [];
-  for (var i = 0; i < (items || []).length; i++) {
-    var x = items[i];
-    if (x.soNo && nos.indexOf(x.soNo) === -1) { nos.push(x.soNo); }
+  for (var i = 0; i < (items||[]).length; i++) {
+    if (items[i].soNo && nos.indexOf(items[i].soNo) === -1) { nos.push(items[i].soNo); }
   }
-  if (!nos.length) { return '-'; }
   var out = '';
-  for (var j = 0; j < nos.length; j++) {
-    out += '<span class="ck cy">' + H(nos[j]) + '</span>';
-  }
-  return out;
+  for (var j = 0; j < nos.length; j++) { out += '<span class="ck cy">' + H(nos[j]) + '</span>'; }
+  return out || '-';
 }
 
 function soTotal(s) {
   var sub = 0;
-  var items = s.items || [];
-  for (var i = 0; i < items.length; i++) {
-    sub += N(items[i].twd) * N(items[i].qty || 1);
-  }
+  for (var i = 0; i < (s.items||[]).length; i++) { sub += N(s.items[i].twd) * N(s.items[i].qty||1); }
   return sub + N(s.freight) + Math.round(sub * N(s.feePct) / 100);
 }
 
 function soFee(s) {
   var sub = 0;
-  var items = s.items || [];
-  for (var i = 0; i < items.length; i++) {
-    sub += N(items[i].twd) * N(items[i].qty || 1);
-  }
+  for (var i = 0; i < (s.items||[]).length; i++) { sub += N(s.items[i].twd) * N(s.items[i].qty||1); }
   return Math.round(sub * N(s.feePct) / 100);
 }
 
-// ── SO items ──
-var soRows = [];
-var soIdx = -1;
+var soRows = [], soIdx = -1;
 
 function soFeeHint() {
   var pct = N(document.getElementById('so-fp').value);
   var el = document.getElementById('so-fh');
   if (!pct) { el.textContent = ''; return; }
   var sub = 0;
-  for (var i = 0; i < soRows.length; i++) {
-    sub += N(soRows[i].twd) * N(soRows[i].qty || 1);
-  }
-  el.textContent = '手續費預估：NT$' + Math.round(sub * pct / 100).toLocaleString() + '（小計 NT$' + sub.toLocaleString() + ' x ' + pct + '%）';
+  for (var i = 0; i < soRows.length; i++) { sub += N(soRows[i].twd) * N(soRows[i].qty||1); }
+  el.textContent = '手續費預估：NT$' + Math.round(sub*pct/100).toLocaleString() + '（小計 NT$' + sub.toLocaleString() + ' x ' + pct + '%）';
 }
 
 function soAddRow() {
-  soRows.push({ name: '', sku: '', jan: '', qty: 1, jpy: 0, twd: 0, arrived: false, weight: '' });
+  soRows.push({ name:'', sku:'', jan:'', qty:1, jpy:0, twd:0, arrived:false, weight:'' });
   drawSORows();
 }
 
@@ -542,9 +571,9 @@ function drawSORows() {
     h += '<input class="ri" value="' + H(r.name) + '" data-i="' + i + '" data-f="name" oninput="soRI(this)">';
     h += '<input class="ri" value="' + H(r.sku) + '" data-i="' + i + '" data-f="sku" oninput="soRI(this)">';
     h += '<input class="ri" value="' + H(r.jan) + '" data-i="' + i + '" data-f="jan" oninput="soRI(this)">';
-    h += '<input class="ri" type="number" value="' + N(r.qty || 1) + '" data-i="' + i + '" data-f="qty" oninput="soRN(this)">';
-    h += '<input class="ri" type="number" value="' + (r.jpy || '') + '" data-i="' + i + '" data-f="jpy" oninput="soRN(this)">';
-    h += '<input class="ri" type="number" value="' + (r.twd || '') + '" data-i="' + i + '" data-f="twd" oninput="soRN(this);soFeeHint()">';
+    h += '<input class="ri" type="number" value="' + N(r.qty||1) + '" data-i="' + i + '" data-f="qty" oninput="soRN(this)">';
+    h += '<input class="ri" type="number" value="' + (r.jpy||'') + '" data-i="' + i + '" data-f="jpy" oninput="soRN(this)">';
+    h += '<input class="ri" type="number" value="' + (r.twd||'') + '" data-i="' + i + '" data-f="twd" oninput="soRN(this);soFeeHint()">';
     h += '<button class="btn bd bx" data-i="' + i + '" onclick="soDelRow(this)">X</button>';
     h += '</div>';
   }
@@ -555,12 +584,10 @@ function soRI(el) { soRows[+el.dataset.i][el.dataset.f] = el.value; }
 function soRN(el) { soRows[+el.dataset.i][el.dataset.f] = N(el.value); }
 function soDelRow(el) { soRows.splice(+el.dataset.i, 1); drawSORows(); soFeeHint(); }
 
-// ── PO items ──
-var poRows = [];
-var poIdx = -1;
+var poRows = [], poIdx = -1;
 
 function poAddRow() {
-  poRows.push({ name: '', sku: '', jan: '', qty: 1, jpy: 0, soNo: '', arrived: false, weight: '' });
+  poRows.push({ name:'', sku:'', jan:'', qty:1, jpy:0, soNo:'', arrived:false, weight:'' });
   drawPORows();
 }
 
@@ -572,8 +599,8 @@ function drawPORows() {
     h += '<input class="ri" value="' + H(r.name) + '" data-i="' + i + '" data-f="name" oninput="poRI(this)">';
     h += '<input class="ri" value="' + H(r.sku) + '" data-i="' + i + '" data-f="sku" oninput="poRI(this)">';
     h += '<input class="ri" value="' + H(r.jan) + '" data-i="' + i + '" data-f="jan" oninput="poRI(this)">';
-    h += '<input class="ri" type="number" value="' + N(r.qty || 1) + '" data-i="' + i + '" data-f="qty" oninput="poRN(this)">';
-    h += '<input class="ri" type="number" value="' + (r.jpy || '') + '" data-i="' + i + '" data-f="jpy" oninput="poRN(this)">';
+    h += '<input class="ri" type="number" value="' + N(r.qty||1) + '" data-i="' + i + '" data-f="qty" oninput="poRN(this)">';
+    h += '<input class="ri" type="number" value="' + (r.jpy||'') + '" data-i="' + i + '" data-f="jpy" oninput="poRN(this)">';
     h += '<div class="dp"><input class="ri" id="psi' + i + '" value="' + H(r.soNo) + '" data-i="' + i + '" placeholder="搜尋SO..." oninput="poSOSrch(this)" autocomplete="off"><div class="dd" id="psd' + i + '" style="display:none"></div></div>';
     h += '<button class="btn bd bx" data-i="' + i + '" onclick="poDelRow(this)">X</button>';
     h += '</div>';
@@ -586,43 +613,27 @@ function poRN(el) { poRows[+el.dataset.i][el.dataset.f] = N(el.value); }
 function poDelRow(el) { poRows.splice(+el.dataset.i, 1); drawPORows(); }
 
 function poSOSrch(el) {
-  var i = +el.dataset.i;
-  poRows[i].soNo = el.value;
+  var i = +el.dataset.i; poRows[i].soNo = el.value;
   var dd = document.getElementById('psd' + i);
   var q = el.value.toLowerCase();
   if (!q) { dd.style.display = 'none'; return; }
-  var res = [];
-  for (var j = 0; j < DB.so.length; j++) {
-    if (DB.so[j].no.toLowerCase().indexOf(q) !== -1) { res.push(j); }
-  }
+  var res = []; for (var j = 0; j < DB.so.length; j++) { if (DB.so[j].no.toLowerCase().indexOf(q) !== -1) { res.push(j); } }
   if (!res.length) { dd.style.display = 'none'; return; }
   var h = '';
-  for (var k = 0; k < res.length; k++) {
-    h += '<div data-si="' + res[k] + '" data-pi="' + i + '" onclick="poSOPick(this)">' + H(DB.so[res[k]].no) + '</div>';
-  }
-  dd.innerHTML = h;
-  dd.style.display = 'block';
+  for (var k = 0; k < res.length; k++) { h += '<div data-si="' + res[k] + '" data-pi="' + i + '" onclick="poSOPick(this)">' + H(DB.so[res[k]].no) + '</div>'; }
+  dd.innerHTML = h; dd.style.display = 'block';
 }
 
 function poSOPick(el) {
-  var si = +el.dataset.si;
-  var pi = +el.dataset.pi;
-  var so = DB.so[si];
-  if (!so) { return; }
+  var si = +el.dataset.si, pi = +el.dataset.pi;
+  var so = DB.so[si]; if (!so) { return; }
   poRows[pi].soNo = so.no;
-  var inp = document.getElementById('psi' + pi);
-  var dd = document.getElementById('psd' + pi);
-  if (inp) { inp.value = so.no; }
-  if (dd) { dd.style.display = 'none'; }
+  var inp = document.getElementById('psi' + pi); if (inp) { inp.value = so.no; }
+  var dd = document.getElementById('psd' + pi); if (dd) { dd.style.display = 'none'; }
 }
 
-// ── DB ──
 function drawDB() {
-  document.getElementById('c0').textContent = 0;
-  document.getElementById('c1').textContent = 0;
-  document.getElementById('c2').textContent = 0;
-  document.getElementById('c3').textContent = 0;
-  var c0 = 0, c1 = 0, c2 = 0, c3 = 0;
+  var c0=0, c1=0, c2=0, c3=0;
   for (var i = 0; i < DB.so.length; i++) {
     if (DB.so[i].status === 'wait') { c0++; }
     if (DB.so[i].status === 'arrived') { c3++; }
@@ -635,143 +646,105 @@ function drawDB() {
   document.getElementById('c1').textContent = c1;
   document.getElementById('c2').textContent = c2;
   document.getElementById('c3').textContent = c3;
-
   var q = (document.getElementById('dbq').value || '').toLowerCase();
   var doneHTML = '';
   for (var a = 0; a < DB.so.length; a++) {
     var s = DB.so[a];
     if (s.status !== 'done') { continue; }
     if (q && s.no.toLowerCase().indexOf(q) === -1) { continue; }
-    doneHTML += '<tr>';
-    doneHTML += '<td><b class="lk" data-i="' + a + '" onclick="viewSO(+this.dataset.i)">' + H(s.no) + '</b></td>';
-    doneHTML += '<td>' + H(s.date || '') + '</td>';
-    doneHTML += '<td>' + chips(s.items) + '</td>';
-    doneHTML += '<td>' + H(s.dvTrk || '-') + '</td>';
-    doneHTML += '<td>' + H(s.dvDt || '-') + '</td>';
+    doneHTML += '<tr><td><b class="lk" data-i="' + a + '" onclick="viewSO(+this.dataset.i)">' + H(s.no) + '</b></td>';
+    doneHTML += '<td>' + H(s.date||'') + '</td><td>' + chips(s.items) + '</td>';
+    doneHTML += '<td>' + H(s.dvTrk||'-') + '</td><td>' + H(s.dvDt||'-') + '</td>';
     doneHTML += '<td>' + bdg(s.status) + '</td>';
-    doneHTML += '<td><button class="btn bw bx" data-i="' + a + '" onclick="openDV(+this.dataset.i)">編輯出貨</button></td>';
-    doneHTML += '</tr>';
+    doneHTML += '<td><button class="btn bw bx" data-i="' + a + '" onclick="openDV(+this.dataset.i)">編輯出貨</button></td></tr>';
   }
   document.getElementById('dbl').innerHTML = doneHTML || '<tr><td colspan="7" style="text-align:center;color:#a0aec0;padding:14px">尚無已出貨訂單</td></tr>';
-
-  var pendHTML = '';
-  var shown = 0;
+  var pendHTML = ''; var shown = 0;
   for (var b = DB.so.length - 1; b >= 0 && shown < 6; b--) {
-    var s2 = DB.so[b];
-    if (s2.status === 'done') { continue; }
-    pendHTML += '<tr>';
-    pendHTML += '<td><b class="lk" data-i="' + b + '" onclick="viewSO(+this.dataset.i)">' + H(s2.no) + '</b></td>';
-    pendHTML += '<td>' + H(s2.date || '') + '</td>';
-    pendHTML += '<td>' + (s2.items || []).length + '項</td>';
-    pendHTML += '<td>' + bdg(s2.status) + '</td>';
-    pendHTML += '</tr>';
+    if (DB.so[b].status === 'done') { continue; }
+    pendHTML += '<tr><td><b class="lk" data-i="' + b + '" onclick="viewSO(+this.dataset.i)">' + H(DB.so[b].no) + '</b></td>';
+    pendHTML += '<td>' + H(DB.so[b].date||'') + '</td><td>' + (DB.so[b].items||[]).length + '項</td><td>' + bdg(DB.so[b].status) + '</td></tr>';
     shown++;
   }
   document.getElementById('dbs').innerHTML = pendHTML || '<tr><td colspan="4" style="text-align:center;color:#a0aec0;padding:14px">尚無訂單</td></tr>';
 }
 
-// ── SO ──
 function viewSO(idx) {
-  var s = DB.so[idx];
-  if (!s) { return; }
-  var fee = soFee(s);
-  var tot = soTotal(s);
+  var s = DB.so[idx]; if (!s) { return; }
+  var fee = soFee(s); var tot = soTotal(s); var sub = 0;
   document.getElementById('sodv-tt').textContent = '訂單詳情：' + s.no;
-  var sub = 0;
   var rows = '';
-  var items = s.items || [];
-  for (var i = 0; i < items.length; i++) {
-    var it = items[i];
-    sub += N(it.twd) * N(it.qty || 1);
-    rows += '<tr>';
-    rows += '<td>' + H(it.name) + '</td>';
-    rows += '<td>' + H(it.sku || '-') + '</td>';
-    rows += '<td>' + H(it.jan || '-') + '</td>';
-    rows += '<td>' + it.qty + '</td>';
-    rows += '<td>' + (it.jpy ? 'Y' + N(it.jpy).toLocaleString() : '-') + '</td>';
-    rows += '<td>' + (it.twd ? 'NT$' + N(it.twd).toLocaleString() : '-') + '</td>';
-    rows += '<td>NT$' + (N(it.twd) * N(it.qty || 1)).toLocaleString() + '</td>';
-    rows += '<td>' + (it.arrived ? '<span class="ck cg">已到</span>' : '<span class="ck cr">未到</span>') + '</td>';
-    rows += '</tr>';
+  for (var i = 0; i < (s.items||[]).length; i++) {
+    var it = s.items[i]; sub += N(it.twd) * N(it.qty||1);
+    rows += '<tr><td>' + H(it.name) + '</td><td>' + H(it.sku||'-') + '</td><td>' + H(it.jan||'-') + '</td>';
+    rows += '<td>' + it.qty + '</td><td>' + (it.jpy ? 'Y'+N(it.jpy).toLocaleString() : '-') + '</td>';
+    rows += '<td>' + (it.twd ? 'NT$'+N(it.twd).toLocaleString() : '-') + '</td>';
+    rows += '<td>NT$' + (N(it.twd)*N(it.qty||1)).toLocaleString() + '</td>';
+    rows += '<td>' + (it.arrived ? '<span class="ck cg">已到</span>' : '<span class="ck cr">未到</span>') + '</td></tr>';
   }
-  var html = '';
-  html += '<div class="dg">';
-  html += '<div class="kv"><span>訂單編號</span><b>' + H(s.no) + '</b></div>';
-  html += '<div class="kv"><span>日期</span><b>' + H(s.date || '') + '</b></div>';
-  html += '<div class="kv"><span>狀態</span>' + bdg(s.status) + '</div>';
-  html += '<div class="kv"><span>備註</span>' + H(s.note || '-') + '</div>';
-  html += '<div class="kv"><span>運費</span><b>NT$' + N(s.freight).toLocaleString() + '</b></div>';
-  html += '<div class="kv"><span>手續費(' + (s.feePct || 0) + '%)</span><b>NT$' + fee.toLocaleString() + '</b></div>';
-  if (s.dvTrk) { html += '<div class="kv"><span>超商單號</span><b>' + H(s.dvTrk) + '</b></div>'; }
-  if (s.dvDt) { html += '<div class="kv"><span>出貨日期</span><b>' + H(s.dvDt) + '</b></div>'; }
-  html += '</div>';
-  html += '<table style="margin-bottom:10px"><thead><tr><th>商品</th><th>SKU</th><th>JAN</th><th>數量</th><th>日幣</th><th>台幣</th><th>小計</th><th>到貨</th></tr></thead><tbody>' + rows + '</tbody></table>';
-  html += '<div class="sm">';
-  html += '<span>商品小計：NT$' + sub.toLocaleString() + '</span>';
-  html += '<span>運費：NT$' + N(s.freight).toLocaleString() + '</span>';
-  html += '<span>手續費：NT$' + fee.toLocaleString() + '</span>';
-  html += '<span style="font-weight:700;color:#276749">總計：NT$' + tot.toLocaleString() + '</span>';
-  html += '</div>';
-  document.getElementById('sodv-b').innerHTML = html;
+  var h = '<div class="dg">';
+  h += '<div class="kv"><span>訂單編號</span><b>' + H(s.no) + '</b></div>';
+  h += '<div class="kv"><span>日期</span><b>' + H(s.date||'') + '</b></div>';
+  h += '<div class="kv"><span>狀態</span>' + bdg(s.status) + '</div>';
+  h += '<div class="kv"><span>備註</span>' + H(s.note||'-') + '</div>';
+  h += '<div class="kv"><span>運費</span><b>NT$' + N(s.freight).toLocaleString() + '</b></div>';
+  h += '<div class="kv"><span>手續費(' + (s.feePct||0) + '%)</span><b>NT$' + fee.toLocaleString() + '</b></div>';
+  if (s.dvTrk) { h += '<div class="kv"><span>超商單號</span><b>' + H(s.dvTrk) + '</b></div>'; }
+  if (s.dvDt) { h += '<div class="kv"><span>出貨日期</span><b>' + H(s.dvDt) + '</b></div>'; }
+  h += '</div>';
+  h += '<table style="margin-bottom:10px"><thead><tr><th>商品</th><th>SKU</th><th>JAN</th><th>數量</th><th>日幣</th><th>台幣</th><th>小計</th><th>到貨</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  h += '<div class="sm"><span>商品小計：NT$' + sub.toLocaleString() + '</span>';
+  h += '<span>運費：NT$' + N(s.freight).toLocaleString() + '</span>';
+  h += '<span>手續費：NT$' + fee.toLocaleString() + '</span>';
+  h += '<span style="font-weight:700;color:#276749">總計：NT$' + tot.toLocaleString() + '</span></div>';
+  document.getElementById('sodv-b').innerHTML = h;
   openM('mo-sodv');
 }
 
 function drawSO() {
   var q = (document.getElementById('soq').value || '').toLowerCase();
-  var html = '';
+  var h = '';
   for (var a = 0; a < DB.so.length; a++) {
     var s = DB.so[a];
-    var match = !q;
-    if (!match && s.no.toLowerCase().indexOf(q) !== -1) { match = true; }
-    if (!match) {
-      for (var x = 0; x < (s.items || []).length; x++) {
-        var it2 = s.items[x];
-        if (it2.name.toLowerCase().indexOf(q) !== -1 || (it2.jan || '').indexOf(q) !== -1) { match = true; break; }
-      }
-    }
+    var match = !q || s.no.toLowerCase().indexOf(q) !== -1;
+    if (!match) { for (var x = 0; x < (s.items||[]).length; x++) { if (s.items[x].name.toLowerCase().indexOf(q) !== -1 || (s.items[x].jan||'').indexOf(q) !== -1) { match = true; break; } } }
     if (!match) { continue; }
-    var fee = soFee(s);
-    var tot = soTotal(s);
+    var fee = soFee(s); var tot = soTotal(s);
     var det = '';
-    for (var d = 0; d < (s.items || []).length; d++) {
-      var it3 = s.items[d];
-      det += '<div style="padding:2px 0;border-bottom:1px solid #f0f4f8;font-size:11px">';
-      det += '<b>' + H(it3.name) + '</b>';
-      if (it3.jan) { det += ' <span style="color:#718096">' + H(it3.jan) + '</span>'; }
-      det += ' x' + it3.qty + ' ';
-      det += it3.arrived ? '<span class="ck cg">已到</span>' : '<span class="ck cr">未到</span>';
-      det += '</div>';
+    for (var d = 0; d < (s.items||[]).length; d++) {
+      var it2 = s.items[d];
+      det += '<div style="padding:2px 0;border-bottom:1px solid #f0f4f8;font-size:11px"><b>' + H(it2.name) + '</b>';
+      if (it2.jan) { det += ' <span style="color:#718096">' + H(it2.jan) + '</span>'; }
+      det += ' x' + it2.qty + ' ' + (it2.arrived ? '<span class="ck cg">已到</span>' : '<span class="ck cr">未到</span>') + '</div>';
     }
-    html += '<tr>';
-    html += '<td><b class="lk" data-i="' + a + '" onclick="viewSO(+this.dataset.i)">' + H(s.no) + '</b><br><span style="font-size:10px;color:#718096">' + H(s.date || '') + '</span></td>';
-    html += '<td>' + det + '</td>';
-    html += '<td>NT$' + N(s.freight).toLocaleString() + '</td>';
-    html += '<td>NT$' + fee.toLocaleString() + '<br><span style="font-size:10px;color:#718096">(' + (s.feePct || 0) + '%)</span></td>';
-    html += '<td style="font-weight:700">NT$' + tot.toLocaleString() + '</td>';
-    html += '<td>' + bdg(s.status) + '</td>';
-    html += '<td style="font-size:11px">' + H(s.note || '') + '</td>';
-    html += '<td style="white-space:nowrap">';
-    html += '<button class="btn bi bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="viewSO(+this.dataset.i)">詳情</button>';
-    html += '<button class="btn bw bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="openSO(+this.dataset.i)">編輯</button>';
-    html += '<button class="btn bd bx" style="display:block" data-i="' + a + '" onclick="delSO(+this.dataset.i)">刪除</button>';
-    html += '</td></tr>';
+    h += '<tr><td><b class="lk" data-i="' + a + '" onclick="viewSO(+this.dataset.i)">' + H(s.no) + '</b><br><span style="font-size:10px;color:#718096">' + H(s.date||'') + '</span></td>';
+    h += '<td>' + det + '</td>';
+    h += '<td>NT$' + N(s.freight).toLocaleString() + '</td>';
+    h += '<td>NT$' + fee.toLocaleString() + '<br><span style="font-size:10px;color:#718096">(' + (s.feePct||0) + '%)</span></td>';
+    h += '<td style="font-weight:700">NT$' + tot.toLocaleString() + '</td>';
+    h += '<td>' + bdg(s.status) + '</td>';
+    h += '<td style="font-size:11px">' + H(s.note||'') + '</td>';
+    h += '<td style="white-space:nowrap">';
+    h += '<button class="btn bi bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="viewSO(+this.dataset.i)">詳情</button>';
+    h += '<button class="btn bw bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="openSO(+this.dataset.i)">編輯</button>';
+    h += '<button class="btn bd bx" style="display:block" data-i="' + a + '" onclick="delSO(+this.dataset.i)">刪除</button>';
+    h += '</td></tr>';
   }
-  document.getElementById('sotb').innerHTML = html || '<tr><td colspan="8" style="text-align:center;color:#a0aec0;padding:18px">尚無訂單</td></tr>';
+  document.getElementById('sotb').innerHTML = h || '<tr><td colspan="8" style="text-align:center;color:#a0aec0;padding:18px">尚無訂單</td></tr>';
 }
 
 function openSO(idx) {
-  soIdx = (idx === undefined || idx < 0) ? -1 : idx;
+  soIdx = (idx < 0) ? -1 : idx;
   var d = (soIdx >= 0) ? DB.so[soIdx] : null;
   document.getElementById('so-tt').textContent = d ? '編輯銷售訂單' : '新增銷售訂單';
-  document.getElementById('so-dt').value = d ? (d.date || '') : new Date().toISOString().slice(0, 10);
+  document.getElementById('so-dt').value = d ? (d.date||'') : new Date().toISOString().slice(0,10);
   document.getElementById('so-no').value = d ? d.no : uid('SO');
-  document.getElementById('so-nt').value = d ? (d.note || '') : '';
-  document.getElementById('so-fr').value = d ? (d.freight || '') : '';
-  document.getElementById('so-fp').value = d ? (d.feePct || '') : '';
+  document.getElementById('so-nt').value = d ? (d.note||'') : '';
+  document.getElementById('so-fr').value = d ? (d.freight||'') : '';
+  document.getElementById('so-fp').value = d ? (d.feePct||'') : '';
   document.getElementById('so-fh').textContent = '';
-  soRows = d ? JSON.parse(JSON.stringify(d.items || [])) : [{ name: '', sku: '', jan: '', qty: 1, jpy: 0, twd: 0, arrived: false, weight: '' }];
-  drawSORows();
-  openM('mo-so');
+  soRows = d ? JSON.parse(JSON.stringify(d.items||[])) : [{ name:'', sku:'', jan:'', qty:1, jpy:0, twd:0, arrived:false, weight:'' }];
+  drawSORows(); openM('mo-so');
 }
 
 function saveSO() {
@@ -779,147 +752,89 @@ function saveSO() {
   if (!no) { showToast('請填寫訂單編號'); return; }
   if (!soRows.length || !soRows[0].name) { showToast('請至少新增一項商品'); return; }
   var prev = (soIdx >= 0) ? DB.so[soIdx] : {};
-  var obj = {
-    no: no,
-    date: document.getElementById('so-dt').value,
-    freight: N(document.getElementById('so-fr').value),
-    feePct: N(document.getElementById('so-fp').value),
-    items: JSON.parse(JSON.stringify(soRows)),
-    note: document.getElementById('so-nt').value,
-    status: (prev && prev.status) ? prev.status : 'wait',
-    dvTrk: (prev && prev.dvTrk) ? prev.dvTrk : '',
-    dvDt: (prev && prev.dvDt) ? prev.dvDt : ''
-  };
+  var obj = { no:no, date:document.getElementById('so-dt').value, freight:N(document.getElementById('so-fr').value), feePct:N(document.getElementById('so-fp').value), items:JSON.parse(JSON.stringify(soRows)), note:document.getElementById('so-nt').value, status:(prev&&prev.status)?prev.status:'wait', dvTrk:(prev&&prev.dvTrk)?prev.dvTrk:'', dvDt:(prev&&prev.dvDt)?prev.dvDt:'' };
   if (soIdx >= 0) { DB.so[soIdx] = obj; } else { DB.so.push(obj); }
-  persist();
-  closeM('mo-so');
-  drawSO();
-  showToast(soIdx >= 0 ? '已更新' : '已新增');
+  persist(); closeM('mo-so'); drawSO(); showToast(soIdx >= 0 ? '已更新' : '已新增');
 }
 
-function delSO(i) {
-  if (!confirm('確定刪除？')) { return; }
-  DB.so.splice(i, 1);
-  persist();
-  drawSO();
-  showToast('已刪除');
-}
+function delSO(i) { if (!confirm('確定刪除？')) { return; } DB.so.splice(i,1); persist(); drawSO(); showToast('已刪除'); }
 
-// ── PO ──
 function viewPO(idx) {
-  var p = DB.po[idx];
-  if (!p) { return; }
+  var p = DB.po[idx]; if (!p) { return; }
   document.getElementById('podv-tt').textContent = '採購單詳情：' + p.no;
   var rows = '';
-  var items = p.items || [];
-  for (var i = 0; i < items.length; i++) {
-    var it = items[i];
-    rows += '<tr>';
-    rows += '<td>' + H(it.name) + '</td>';
-    rows += '<td>' + H(it.sku || '-') + '</td>';
-    rows += '<td>' + H(it.jan || '-') + '</td>';
-    rows += '<td>' + it.qty + '</td>';
-    rows += '<td>' + (it.jpy ? 'Y' + N(it.jpy).toLocaleString() : '-') + '</td>';
-    rows += '<td>' + (it.soNo ? '<span class="ck cy">' + H(it.soNo) + '</span>' : '-') + '</td>';
-    rows += '<td>' + (it.arrived ? '<span class="ck cg">已到</span>' : '<span class="ck cr">未到</span>') + '</td>';
-    rows += '<td>' + H(it.weight || '-') + '</td>';
-    rows += '</tr>';
+  for (var i = 0; i < (p.items||[]).length; i++) {
+    var it = p.items[i];
+    rows += '<tr><td>' + H(it.name) + '</td><td>' + H(it.sku||'-') + '</td><td>' + H(it.jan||'-') + '</td>';
+    rows += '<td>' + it.qty + '</td><td>' + (it.jpy?'Y'+N(it.jpy).toLocaleString():'-') + '</td>';
+    rows += '<td>' + (it.soNo?'<span class="ck cy">'+H(it.soNo)+'</span>':'-') + '</td>';
+    rows += '<td>' + (it.arrived?'<span class="ck cg">已到</span>':'<span class="ck cr">未到</span>') + '</td>';
+    rows += '<td>' + H(it.weight||'-') + '</td></tr>';
   }
-  var html = '';
-  html += '<div class="dg">';
-  html += '<div class="kv"><span>採購單號</span><b>' + H(p.no) + '</b></div>';
-  html += '<div class="kv"><span>廠商</span>' + (p.vendor ? '<span class="ck cp">' + H(p.vendor) + '</span>' : '-') + '</div>';
-  html += '<div class="kv"><span>狀態</span>' + bdg(p.status) + '</div>';
-  html += '<div class="kv"><span>網址</span>' + (p.url ? '<a href="' + H(p.url) + '" target="_blank" class="lk">開啟</a>' : '-') + '</div>';
-  if (p.trackNo) {
-    html += '<div class="kv"><span>物流商</span><b>' + H(p.carrier || '-') + '</b></div>';
-    html += '<div class="kv"><span>寄件單號</span><b>' + H(p.trackNo) + '</b></div>';
-  }
-  if (p.shipDt) { html += '<div class="kv"><span>出貨日期</span><b>' + H(p.shipDt) + '</b></div>'; }
-  if (p.sgNo) { html += '<div class="kv"><span>倉庫總單</span><b>' + H(p.sgNo) + '</b></div>'; }
-  html += '</div>';
-  if (p.note) { html += '<div style="font-size:12px;margin-bottom:10px;padding:7px;background:#fffaf0;border-radius:5px"><b>備註：</b>' + H(p.note) + '</div>'; }
-  html += '<table><thead><tr><th>商品</th><th>SKU</th><th>JAN</th><th>數量</th><th>日幣</th><th>對應SO</th><th>到貨</th><th>重量</th></tr></thead><tbody>' + rows + '</tbody></table>';
-  document.getElementById('podv-b').innerHTML = html;
+  var h = '<div class="dg">';
+  h += '<div class="kv"><span>採購單號</span><b>' + H(p.no) + '</b></div>';
+  h += '<div class="kv"><span>廠商</span>' + (p.vendor?'<span class="ck cp">'+H(p.vendor)+'</span>':'-') + '</div>';
+  h += '<div class="kv"><span>狀態</span>' + bdg(p.status) + '</div>';
+  h += '<div class="kv"><span>網址</span>' + (p.url?'<a href="'+H(p.url)+'" target="_blank" class="lk">開啟</a>':'-') + '</div>';
+  if (p.trackNo) { h += '<div class="kv"><span>物流商</span><b>' + H(p.carrier||'-') + '</b></div><div class="kv"><span>寄件單號</span><b>' + H(p.trackNo) + '</b></div>'; }
+  if (p.shipDt) { h += '<div class="kv"><span>出貨日期</span><b>' + H(p.shipDt) + '</b></div>'; }
+  if (p.sgNo) { h += '<div class="kv"><span>倉庫總單</span><b>' + H(p.sgNo) + '</b></div>'; }
+  h += '</div>';
+  if (p.note) { h += '<div style="font-size:12px;margin-bottom:10px;padding:7px;background:#fffaf0;border-radius:5px"><b>備註：</b>' + H(p.note) + '</div>'; }
+  h += '<table><thead><tr><th>商品</th><th>SKU</th><th>JAN</th><th>數量</th><th>日幣</th><th>對應SO</th><th>到貨</th><th>重量</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  document.getElementById('podv-b').innerHTML = h;
   openM('mo-podv');
 }
 
 function showUnrcv() {
   var list = [];
-  for (var i = 0; i < DB.po.length; i++) {
-    var p = DB.po[i];
-    for (var j = 0; j < (p.items || []).length; j++) {
-      var it = p.items[j];
-      if (!it.arrived) {
-        list.push({ po: p.no, vendor: p.vendor, name: it.name, jan: it.jan, qty: it.qty, soNo: it.soNo, status: p.status });
-      }
-    }
-  }
-  var html = '';
+  for (var i = 0; i < DB.po.length; i++) { for (var j = 0; j < (DB.po[i].items||[]).length; j++) { if (!DB.po[i].items[j].arrived) { list.push({ po:DB.po[i].no, vendor:DB.po[i].vendor, name:DB.po[i].items[j].name, jan:DB.po[i].items[j].jan, qty:DB.po[i].items[j].qty, soNo:DB.po[i].items[j].soNo, status:DB.po[i].status }); } } }
+  var h = '';
   if (list.length) {
-    html += '<table><thead><tr><th>採購單號</th><th>廠商</th><th>商品名稱</th><th>JAN</th><th>數量</th><th>對應SO</th><th>狀態</th></tr></thead><tbody>';
+    h += '<table><thead><tr><th>採購單號</th><th>廠商</th><th>商品名稱</th><th>JAN</th><th>數量</th><th>對應SO</th><th>狀態</th></tr></thead><tbody>';
     for (var k = 0; k < list.length; k++) {
-      var r = list[k];
-      html += '<tr>';
-      html += '<td>' + H(r.po) + '</td>';
-      html += '<td>' + (r.vendor ? '<span class="ck cp">' + H(r.vendor) + '</span>' : '-') + '</td>';
-      html += '<td>' + H(r.name) + '</td>';
-      html += '<td>' + H(r.jan || '-') + '</td>';
-      html += '<td>' + r.qty + '</td>';
-      html += '<td>' + (r.soNo ? '<span class="ck cy">' + H(r.soNo) + '</span>' : '-') + '</td>';
-      html += '<td>' + bdg(r.status) + '</td>';
-      html += '</tr>';
+      h += '<tr><td>' + H(list[k].po) + '</td><td>' + (list[k].vendor?'<span class="ck cp">'+H(list[k].vendor)+'</span>':'-') + '</td>';
+      h += '<td>' + H(list[k].name) + '</td><td>' + H(list[k].jan||'-') + '</td><td>' + list[k].qty + '</td>';
+      h += '<td>' + (list[k].soNo?'<span class="ck cy">'+H(list[k].soNo)+'</span>':'-') + '</td><td>' + bdg(list[k].status) + '</td></tr>';
     }
-    html += '</tbody></table>';
-  } else {
-    html = '<div style="text-align:center;color:#a0aec0;padding:20px">所有商品均已到貨！</div>';
-  }
-  document.getElementById('urcv-b').innerHTML = html;
+    h += '</tbody></table>';
+  } else { h = '<div style="text-align:center;color:#a0aec0;padding:20px">所有商品均已到貨！</div>'; }
+  document.getElementById('urcv-b').innerHTML = h;
   openM('mo-urcv');
 }
 
 function drawPO() {
   var q = (document.getElementById('poq').value || '').toLowerCase();
-  var html = '';
+  var h = '';
   for (var a = 0; a < DB.po.length; a++) {
     var p = DB.po[a];
-    var match = !q;
-    if (!match && p.no.toLowerCase().indexOf(q) !== -1) { match = true; }
-    if (!match && (p.vendor || '').toLowerCase().indexOf(q) !== -1) { match = true; }
-    if (!match) {
-      for (var x = 0; x < (p.items || []).length; x++) {
-        var it2 = p.items[x];
-        if (it2.name.toLowerCase().indexOf(q) !== -1 || (it2.jan || '').indexOf(q) !== -1 || (it2.soNo || '').toLowerCase().indexOf(q) !== -1) { match = true; break; }
-      }
-    }
+    var match = !q || p.no.toLowerCase().indexOf(q) !== -1 || (p.vendor||'').toLowerCase().indexOf(q) !== -1;
+    if (!match) { for (var x = 0; x < (p.items||[]).length; x++) { if (p.items[x].name.toLowerCase().indexOf(q) !== -1 || (p.items[x].jan||'').indexOf(q) !== -1 || (p.items[x].soNo||'').toLowerCase().indexOf(q) !== -1) { match = true; break; } } }
     if (!match) { continue; }
-    html += '<tr>';
-    html += '<td><b>' + H(p.no) + '</b></td>';
-    html += '<td>' + (p.vendor ? '<span class="ck cp">' + H(p.vendor) + '</span>' : '-') + '</td>';
-    html += '<td>' + soChips(p.items) + '</td>';
-    html += '<td>' + chips(p.items) + '</td>';
-    html += '<td>' + bdg(p.status) + '</td>';
-    html += '<td>' + (p.trackNo ? '<span style="font-size:11px">' + H(p.carrier || '') + ' ' + H(p.trackNo) + '</span>' : '-') + '</td>';
-    html += '<td style="white-space:nowrap">';
-    html += '<button class="btn bi bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="viewPO(+this.dataset.i)">詳情</button>';
-    html += '<button class="btn bw bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="openPO(+this.dataset.i)">編輯</button>';
-    html += '<button class="btn bd bx" style="display:block" data-i="' + a + '" onclick="delPO(+this.dataset.i)">刪除</button>';
-    html += '</td></tr>';
+    h += '<tr><td><b>' + H(p.no) + '</b></td>';
+    h += '<td>' + (p.vendor?'<span class="ck cp">'+H(p.vendor)+'</span>':'-') + '</td>';
+    h += '<td>' + soChips(p.items) + '</td><td>' + chips(p.items) + '</td>';
+    h += '<td>' + bdg(p.status) + '</td>';
+    h += '<td>' + (p.trackNo?'<span style="font-size:11px">'+H(p.carrier||'')+' '+H(p.trackNo)+'</span>':'-') + '</td>';
+    h += '<td style="white-space:nowrap">';
+    h += '<button class="btn bi bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="viewPO(+this.dataset.i)">詳情</button>';
+    h += '<button class="btn bw bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="openPO(+this.dataset.i)">編輯</button>';
+    h += '<button class="btn bd bx" style="display:block" data-i="' + a + '" onclick="delPO(+this.dataset.i)">刪除</button>';
+    h += '</td></tr>';
   }
-  document.getElementById('potb').innerHTML = html || '<tr><td colspan="7" style="text-align:center;color:#a0aec0;padding:18px">尚無採購單</td></tr>';
+  document.getElementById('potb').innerHTML = h || '<tr><td colspan="7" style="text-align:center;color:#a0aec0;padding:18px">尚無採購單</td></tr>';
 }
 
 function openPO(idx) {
-  poIdx = (idx === undefined || idx < 0) ? -1 : idx;
+  poIdx = (idx < 0) ? -1 : idx;
   var d = (poIdx >= 0) ? DB.po[poIdx] : null;
   document.getElementById('po-tt').textContent = d ? '編輯採購訂單' : '新增採購訂單';
   document.getElementById('po-no').value = d ? d.no : uid('PO');
-  document.getElementById('po-vn').value = d ? (d.vendor || '') : '';
-  document.getElementById('po-ul').value = d ? (d.url || '') : '';
-  document.getElementById('po-nt').value = d ? (d.note || '') : '';
-  poRows = d ? JSON.parse(JSON.stringify(d.items || [])) : [{ name: '', sku: '', jan: '', qty: 1, jpy: 0, soNo: '', arrived: false, weight: '' }];
-  drawPORows();
-  openM('mo-po');
+  document.getElementById('po-vn').value = d ? (d.vendor||'') : '';
+  document.getElementById('po-ul').value = d ? (d.url||'') : '';
+  document.getElementById('po-nt').value = d ? (d.note||'') : '';
+  poRows = d ? JSON.parse(JSON.stringify(d.items||[])) : [{ name:'', sku:'', jan:'', qty:1, jpy:0, soNo:'', arrived:false, weight:'' }];
+  drawPORows(); openM('mo-po');
 }
 
 function savePO() {
@@ -927,47 +842,15 @@ function savePO() {
   if (!no) { showToast('請填寫採購單號'); return; }
   if (!poRows.length || !poRows[0].name) { showToast('請至少新增一項商品'); return; }
   var prev = (poIdx >= 0) ? DB.po[poIdx] : {};
-  var obj = {
-    no: no,
-    vendor: document.getElementById('po-vn').value,
-    url: document.getElementById('po-ul').value,
-    note: document.getElementById('po-nt').value,
-    items: JSON.parse(JSON.stringify(poRows)),
-    status: (prev && prev.status) ? prev.status : 'ordered',
-    trackNo: (prev && prev.trackNo) ? prev.trackNo : '',
-    carrier: (prev && prev.carrier) ? prev.carrier : '',
-    sgNo: (prev && prev.sgNo) ? prev.sgNo : '',
-    shipDt: (prev && prev.shipDt) ? prev.shipDt : '',
-    shipNote: (prev && prev.shipNote) ? prev.shipNote : ''
-  };
+  var obj = { no:no, vendor:document.getElementById('po-vn').value, url:document.getElementById('po-ul').value, note:document.getElementById('po-nt').value, items:JSON.parse(JSON.stringify(poRows)), status:(prev&&prev.status)?prev.status:'ordered', trackNo:(prev&&prev.trackNo)?prev.trackNo:'', carrier:(prev&&prev.carrier)?prev.carrier:'', sgNo:(prev&&prev.sgNo)?prev.sgNo:'', shipDt:(prev&&prev.shipDt)?prev.shipDt:'', shipNote:(prev&&prev.shipNote)?prev.shipNote:'' };
   if (poIdx >= 0) { DB.po[poIdx] = obj; } else { DB.po.push(obj); }
-  for (var i = 0; i < poRows.length; i++) {
-    var sno = poRows[i].soNo;
-    if (!sno) { continue; }
-    for (var j = 0; j < DB.so.length; j++) {
-      if (DB.so[j].no === sno && DB.so[j].status === 'wait') {
-        DB.so[j].status = 'ordered';
-      }
-    }
-  }
-  persist();
-  closeM('mo-po');
-  drawPO();
-  showToast(poIdx >= 0 ? '已更新' : '已新增');
+  for (var i = 0; i < poRows.length; i++) { if (poRows[i].soNo) { for (var j = 0; j < DB.so.length; j++) { if (DB.so[j].no === poRows[i].soNo && DB.so[j].status === 'wait') { DB.so[j].status = 'ordered'; } } } }
+  persist(); closeM('mo-po'); drawPO(); showToast(poIdx >= 0 ? '已更新' : '已新增');
 }
 
-function delPO(i) {
-  if (!confirm('確定刪除？')) { return; }
-  DB.po.splice(i, 1);
-  persist();
-  drawPO();
-  showToast('已刪除');
-}
+function delPO(i) { if (!confirm('確定刪除？')) { return; } DB.po.splice(i,1); persist(); drawPO(); showToast('已刪除'); }
 
-// ── SHIPMENT ──
-var trkPI = -1;
-var sgEI = -1;
-var sePI = -1;
+var trkPI = -1, sgEI = -1, sePI = -1;
 
 function trkSearch() {
   var q = document.getElementById('trkq').value.toLowerCase();
@@ -975,197 +858,87 @@ function trkSearch() {
   if (!q) { dd.style.display = 'none'; trkPI = -1; trkPV(); return; }
   var res = [];
   for (var i = 0; i < DB.po.length; i++) {
-    var p = DB.po[i];
-    var match = p.no.toLowerCase().indexOf(q) !== -1;
-    if (!match) {
-      for (var j = 0; j < (p.items || []).length; j++) {
-        if (p.items[j].name.toLowerCase().indexOf(q) !== -1) { match = true; break; }
-      }
-    }
-    if (match) { res.push(i); }
+    var p = DB.po[i]; var m = p.no.toLowerCase().indexOf(q) !== -1;
+    if (!m) { for (var j = 0; j < (p.items||[]).length; j++) { if (p.items[j].name.toLowerCase().indexOf(q) !== -1) { m = true; break; } } }
+    if (m) { res.push(i); }
   }
   if (!res.length) { dd.style.display = 'none'; return; }
   var h = '';
   for (var k = 0; k < res.length; k++) {
-    var p2 = DB.po[res[k]];
-    var names = [];
-    for (var m = 0; m < (p2.items || []).length; m++) { names.push(H(p2.items[m].name)); }
-    h += '<div data-i="' + res[k] + '" onclick="trkPick(+this.dataset.i)">' + H(p2.no) + (p2.vendor ? ' [' + H(p2.vendor) + ']' : '') + ' - ' + names.join(', ') + '</div>';
+    var p2 = DB.po[res[k]]; var names = [];
+    for (var m2 = 0; m2 < (p2.items||[]).length; m2++) { names.push(H(p2.items[m2].name)); }
+    h += '<div data-i="' + res[k] + '" onclick="trkPick(+this.dataset.i)">' + H(p2.no) + (p2.vendor?' ['+H(p2.vendor)+']':'') + ' - ' + names.join(', ') + '</div>';
   }
-  dd.innerHTML = h;
-  dd.style.display = 'block';
+  dd.innerHTML = h; dd.style.display = 'block';
 }
 
-function trkPick(i) {
-  trkPI = i;
-  var p = DB.po[i];
-  if (!p) { return; }
-  document.getElementById('trkq').value = p.no;
-  document.getElementById('trkdd').style.display = 'none';
-  trkPV();
-}
+function trkPick(i) { trkPI = i; document.getElementById('trkq').value = DB.po[i].no; document.getElementById('trkdd').style.display = 'none'; trkPV(); }
 
 function trkPV() {
   var box = document.getElementById('trkpv');
   if (trkPI < 0) { box.style.display = 'none'; return; }
-  var p = DB.po[trkPI];
-  if (!p) { box.style.display = 'none'; return; }
+  var p = DB.po[trkPI]; if (!p) { box.style.display = 'none'; return; }
   var rows = '';
-  for (var i = 0; i < (p.items || []).length; i++) {
+  for (var i = 0; i < (p.items||[]).length; i++) {
     var it = p.items[i];
-    rows += '<tr>';
-    rows += '<td style="padding:3px 6px">' + H(it.name) + '</td>';
-    rows += '<td style="padding:3px 6px">' + H(it.jan || '-') + '</td>';
-    rows += '<td style="padding:3px 6px">x' + it.qty + '</td>';
-    rows += '<td style="padding:3px 6px">' + (it.jpy ? 'Y' + N(it.jpy).toLocaleString() : '-') + '</td>';
-    rows += '<td style="padding:3px 6px">' + H(it.soNo || '-') + '</td>';
-    rows += '</tr>';
+    rows += '<tr><td style="padding:3px 6px">' + H(it.name) + '</td><td style="padding:3px 6px">' + H(it.jan||'-') + '</td><td style="padding:3px 6px">x' + it.qty + '</td><td style="padding:3px 6px">' + (it.jpy?'Y'+N(it.jpy).toLocaleString():'-') + '</td><td style="padding:3px 6px">' + H(it.soNo||'-') + '</td></tr>';
   }
   box.style.display = 'block';
-  box.innerHTML = '<b style="display:block;margin-bottom:5px">確認採購單：' + H(p.no) + (p.vendor ? ' [' + H(p.vendor) + ']' : '') + '</b>' +
-    '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#fef3c7">' +
-    '<th style="padding:3px 6px;text-align:left">商品</th><th style="padding:3px 6px;text-align:left">JAN</th>' +
-    '<th style="padding:3px 6px;text-align:left">數量</th><th style="padding:3px 6px;text-align:left">日幣</th>' +
-    '<th style="padding:3px 6px;text-align:left">對應SO</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  box.innerHTML = '<b style="display:block;margin-bottom:5px">確認採購單：' + H(p.no) + (p.vendor?' ['+H(p.vendor)+']':'') + '</b><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#fef3c7"><th style="padding:3px 6px;text-align:left">商品</th><th style="padding:3px 6px;text-align:left">JAN</th><th style="padding:3px 6px;text-align:left">數量</th><th style="padding:3px 6px;text-align:left">日幣</th><th style="padding:3px 6px;text-align:left">對應SO</th></tr></thead><tbody>' + rows + '</tbody></table>';
 }
 
 function drawSH() {
   var opts = '<option value="">選擇...</option>';
-  for (var i = 0; i < DB.sg.length; i++) {
-    opts += '<option value="' + H(DB.sg[i].no) + '">' + H(DB.sg[i].no) + '</option>';
-  }
+  for (var i = 0; i < DB.sg.length; i++) { opts += '<option value="' + H(DB.sg[i].no) + '">' + H(DB.sg[i].no) + '</option>'; }
   document.getElementById('trksg').innerHTML = opts;
   document.getElementById('se-sg').innerHTML = opts;
-  document.getElementById('trkdt').value = new Date().toISOString().slice(0, 10);
-  var html = '';
+  document.getElementById('trkdt').value = new Date().toISOString().slice(0,10);
+  var h = '';
   for (var j = 0; j < DB.sg.length; j++) {
-    var s = DB.sg[j];
-    var poList = [];
-    for (var k = 0; k < DB.po.length; k++) {
-      if (DB.po[k].sgNo === s.no) { poList.push(DB.po[k]); }
-    }
-    html += '<tr>';
-    html += '<td><b>' + H(s.no) + '</b></td>';
-    html += '<td>' + H(s.date || '') + '</td>';
-    html += '<td>';
-    for (var m = 0; m < poList.length; m++) {
-      html += '<span class="ck">' + H(poList[m].no) + (poList[m].vendor ? ' [' + H(poList[m].vendor) + ']' : '') + '</span>';
-    }
-    html += '</td>';
-    html += '<td>' + bdg(s.status || 'ordered') + '</td>';
-    html += '<td style="white-space:nowrap">';
-    html += '<button class="btn bw bx" style="margin-right:3px" data-si="' + j + '" onclick="openSG(+this.dataset.si)">編輯</button>';
-    html += '<button class="btn bd bx" data-si="' + j + '" onclick="delSG(+this.dataset.si)">刪除</button>';
-    html += '</td></tr>';
+    var s = DB.sg[j]; var poList = [];
+    for (var k = 0; k < DB.po.length; k++) { if (DB.po[k].sgNo === s.no) { poList.push(DB.po[k]); } }
+    h += '<tr><td><b>' + H(s.no) + '</b></td><td>' + H(s.date||'') + '</td><td>';
+    for (var m = 0; m < poList.length; m++) { h += '<span class="ck">' + H(poList[m].no) + (poList[m].vendor?' ['+H(poList[m].vendor)+']':'') + '</span>'; }
+    h += '</td><td>' + bdg(s.status||'ordered') + '</td>';
+    h += '<td style="white-space:nowrap"><button class="btn bw bx" style="margin-right:3px" data-si="' + j + '" onclick="openSG(+this.dataset.si)">編輯</button><button class="btn bd bx" data-si="' + j + '" onclick="delSG(+this.dataset.si)">刪除</button></td></tr>';
   }
-  document.getElementById('sgtb').innerHTML = html || '<tr><td colspan="5" style="text-align:center;color:#a0aec0;padding:14px">尚無倉庫總單</td></tr>';
+  document.getElementById('sgtb').innerHTML = h || '<tr><td colspan="5" style="text-align:center;color:#a0aec0;padding:14px">尚無倉庫總單</td></tr>';
 }
 
-function openSG(idx) {
-  sgEI = (idx === undefined || idx < 0) ? -1 : idx;
-  var d = (sgEI >= 0) ? DB.sg[sgEI] : null;
-  document.getElementById('sg-tt').textContent = d ? '編輯倉庫總單' : '新增倉庫總單';
-  document.getElementById('sg-no').value = d ? d.no : uid('SG');
-  openM('mo-sg');
-}
-
-function saveSG() {
-  var no = document.getElementById('sg-no').value.trim();
-  if (!no) { showToast('請填寫倉庫總單號'); return; }
-  if (sgEI >= 0) { DB.sg[sgEI].no = no; } else { DB.sg.push({ no: no, date: new Date().toISOString().slice(0, 10), status: 'ordered' }); }
-  persist();
-  closeM('mo-sg');
-  drawSH();
-  showToast('已儲存');
-}
-
-function delSG(i) {
-  if (!confirm('確定刪除？')) { return; }
-  DB.sg.splice(i, 1);
-  persist();
-  drawSH();
-  showToast('已刪除');
-}
+function openSG(idx) { sgEI = (idx < 0) ? -1 : idx; var d = (sgEI >= 0) ? DB.sg[sgEI] : null; document.getElementById('sg-tt').textContent = d ? '編輯倉庫總單' : '新增倉庫總單'; document.getElementById('sg-no').value = d ? d.no : uid('SG'); openM('mo-sg'); }
+function saveSG() { var no = document.getElementById('sg-no').value.trim(); if (!no) { showToast('請填寫倉庫總單號'); return; } if (sgEI >= 0) { DB.sg[sgEI].no = no; } else { DB.sg.push({ no:no, date:new Date().toISOString().slice(0,10), status:'ordered' }); } persist(); closeM('mo-sg'); drawSH(); showToast('已儲存'); }
+function delSG(i) { if (!confirm('確定刪除？')) { return; } DB.sg.splice(i,1); persist(); drawSH(); showToast('已刪除'); }
 
 function doTrk() {
   var poNo = (trkPI >= 0) ? DB.po[trkPI].no : document.getElementById('trkq').value.trim();
   var tNo = document.getElementById('trkno').value.trim();
   if (!poNo || !tNo) { showToast('請選擇採購單並輸入寄件單號'); return; }
-  var po = null;
-  for (var i = 0; i < DB.po.length; i++) {
-    if (DB.po[i].no === poNo) { po = DB.po[i]; break; }
-  }
+  var po = null; for (var i = 0; i < DB.po.length; i++) { if (DB.po[i].no === poNo) { po = DB.po[i]; break; } }
   if (!po) { showToast('找不到此採購單'); return; }
-  po.trackNo = tNo;
-  po.carrier = document.getElementById('trkcr').value;
-  po.status = 'shipped';
-  po.sgNo = document.getElementById('trksg').value;
-  po.shipDt = document.getElementById('trkdt').value;
-  po.shipNote = document.getElementById('trknote').value;
-  persist();
-  drawSH();
-  document.getElementById('trkq').value = '';
-  document.getElementById('trkno').value = '';
-  document.getElementById('trknote').value = '';
-  document.getElementById('trkpv').style.display = 'none';
-  trkPI = -1;
-  showToast('已更新為日本已出貨');
+  po.trackNo = tNo; po.carrier = document.getElementById('trkcr').value;
+  po.status = 'shipped'; po.sgNo = document.getElementById('trksg').value;
+  po.shipDt = document.getElementById('trkdt').value; po.shipNote = document.getElementById('trknote').value;
+  persist(); drawSH();
+  document.getElementById('trkq').value = ''; document.getElementById('trkno').value = '';
+  document.getElementById('trknote').value = ''; document.getElementById('trkpv').style.display = 'none';
+  trkPI = -1; showToast('已更新為日本已出貨');
 }
 
-function openSE(pi) {
-  sePI = pi;
-  var p = DB.po[pi];
-  if (!p) { return; }
-  document.getElementById('se-cr').value = p.carrier || '';
-  document.getElementById('se-no').value = p.trackNo || '';
-  document.getElementById('se-dt').value = p.shipDt || '';
-  document.getElementById('se-nt').value = p.shipNote || '';
-  drawSH();
-  setTimeout(function () { document.getElementById('se-sg').value = p.sgNo || ''; }, 50);
-  openM('mo-se');
-}
+function openSE(pi) { sePI = pi; var p = DB.po[pi]; if (!p) { return; } document.getElementById('se-cr').value = p.carrier||''; document.getElementById('se-no').value = p.trackNo||''; document.getElementById('se-dt').value = p.shipDt||''; document.getElementById('se-nt').value = p.shipNote||''; drawSH(); setTimeout(function() { document.getElementById('se-sg').value = p.sgNo||''; }, 50); openM('mo-se'); }
+function saveSE() { var p = DB.po[sePI]; if (!p) { return; } p.carrier = document.getElementById('se-cr').value; p.trackNo = document.getElementById('se-no').value; p.shipDt = document.getElementById('se-dt').value; p.sgNo = document.getElementById('se-sg').value; p.shipNote = document.getElementById('se-nt').value; if (p.trackNo) { p.status = 'shipped'; } persist(); closeM('mo-se'); drawPO(); showToast('寄件資訊已更新'); }
 
-function saveSE() {
-  var p = DB.po[sePI];
-  if (!p) { return; }
-  p.carrier = document.getElementById('se-cr').value;
-  p.trackNo = document.getElementById('se-no').value;
-  p.shipDt = document.getElementById('se-dt').value;
-  p.sgNo = document.getElementById('se-sg').value;
-  p.shipNote = document.getElementById('se-nt').value;
-  if (p.trackNo) { p.status = 'shipped'; }
-  persist();
-  closeM('mo-se');
-  drawPO();
-  showToast('寄件資訊已更新');
-}
-
-// ── RECEIVE ──
-var rcNos = [];
-var rcTitle = '';
+var rcNos = [], rcTitle = '';
 
 function drawRC() {
-  var sel = document.getElementById('rcsg');
-  var opts = '<option value="">-- 選擇 --</option>';
-  for (var i = 0; i < DB.sg.length; i++) {
-    var cnt = 0;
-    for (var j = 0; j < DB.po.length; j++) {
-      if (DB.po[j].sgNo === DB.sg[i].no) { cnt++; }
-    }
-    opts += '<option value="' + H(DB.sg[i].no) + '">' + H(DB.sg[i].no) + ' (' + cnt + '筆)</option>';
-  }
-  sel.innerHTML = opts;
-  document.getElementById('rclist').innerHTML = '';
+  var sel = document.getElementById('rcsg'); var opts = '<option value="">-- 選擇 --</option>';
+  for (var i = 0; i < DB.sg.length; i++) { var cnt = 0; for (var j = 0; j < DB.po.length; j++) { if (DB.po[j].sgNo === DB.sg[i].no) { cnt++; } } opts += '<option value="' + H(DB.sg[i].no) + '">' + H(DB.sg[i].no) + ' (' + cnt + '筆)</option>'; }
+  sel.innerHTML = opts; document.getElementById('rclist').innerHTML = '';
 }
 
 function rcLoadSG() {
-  var no = document.getElementById('rcsg').value;
-  if (!no) { return; }
+  var no = document.getElementById('rcsg').value; if (!no) { return; }
   document.getElementById('rcq').value = '';
-  var pos = [];
-  for (var i = 0; i < DB.po.length; i++) {
-    if (DB.po[i].sgNo === no) { pos.push(DB.po[i]); }
-  }
+  var pos = []; for (var i = 0; i < DB.po.length; i++) { if (DB.po[i].sgNo === no) { pos.push(DB.po[i]); } }
   buildRC(pos, '倉庫總單：' + no);
 }
 
@@ -1175,478 +948,191 @@ function rcSearch() {
   if (!q) { dd.style.display = 'none'; return; }
   var res = [];
   for (var i = 0; i < DB.po.length; i++) {
-    var p = DB.po[i];
-    var match = p.no.toLowerCase().indexOf(q) !== -1;
-    if (!match) {
-      for (var j = 0; j < (p.items || []).length; j++) {
-        var itq = p.items[j];
-        if (itq.name.toLowerCase().indexOf(q) !== -1 || (itq.jan || '').toLowerCase().indexOf(q) !== -1) { match = true; break; }
-      }
-    }
-    if (match) { res.push(i); }
+    var p = DB.po[i]; var m = p.no.toLowerCase().indexOf(q) !== -1;
+    if (!m) { for (var j = 0; j < (p.items||[]).length; j++) { var itq = p.items[j]; if (itq.name.toLowerCase().indexOf(q) !== -1 || (itq.jan||'').toLowerCase().indexOf(q) !== -1) { m = true; break; } } }
+    if (m) { res.push(i); }
   }
   if (!res.length) { dd.style.display = 'none'; return; }
   var h = '';
   for (var k = 0; k < res.length; k++) {
-    var p2 = DB.po[res[k]];
-    var names = [];
-    for (var m = 0; m < (p2.items || []).length; m++) {
-      var itm = p2.items[m];
-      names.push(H(itm.name) + (itm.jan ? ' (' + H(itm.jan) + ')' : ''));
-    }
-    h += '<div data-i="' + res[k] + '" onclick="rcPick(+this.dataset.i)">' + H(p2.no) + (p2.vendor ? ' [' + H(p2.vendor) + ']' : '') + ' - ' + names.join(', ') + '</div>';
+    var p2 = DB.po[res[k]]; var names = [];
+    for (var m2 = 0; m2 < (p2.items||[]).length; m2++) { var itm = p2.items[m2]; names.push(H(itm.name) + (itm.jan?' ('+H(itm.jan)+')':'')); }
+    h += '<div data-i="' + res[k] + '" onclick="rcPick(+this.dataset.i)">' + H(p2.no) + (p2.vendor?' ['+H(p2.vendor)+']':'') + ' - ' + names.join(', ') + '</div>';
   }
-  dd.innerHTML = h;
-  dd.style.display = 'block';
+  dd.innerHTML = h; dd.style.display = 'block';
 }
 
-function rcPick(i) {
-  var p = DB.po[i];
-  if (!p) { return; }
-  document.getElementById('rcdd').style.display = 'none';
-  document.getElementById('rcq').value = p.no;
-  buildRC([p], '採購單：' + p.no);
-}
+function rcPick(i) { var p = DB.po[i]; if (!p) { return; } document.getElementById('rcdd').style.display = 'none'; document.getElementById('rcq').value = p.no; buildRC([p], '採購單：' + p.no); }
 
 function buildRC(pos, title) {
-  rcNos = [];
-  for (var x = 0; x < pos.length; x++) { rcNos.push(pos[x].no); }
-  rcTitle = title;
-  if (!pos.length) {
-    document.getElementById('rclist').innerHTML = '<div class="panel" style="text-align:center;color:#a0aec0;padding:18px">無採購單資料</div>';
-    return;
-  }
-  var html = '<div class="panel"><div class="ph"><div class="pt">驗收清單 -- ' + H(title) + '</div>';
-  html += '<button class="btn bi bx" onclick="rcDetail()">驗收報表</button></div>';
+  rcNos = []; for (var x = 0; x < pos.length; x++) { rcNos.push(pos[x].no); } rcTitle = title;
+  if (!pos.length) { document.getElementById('rclist').innerHTML = '<div class="panel" style="text-align:center;color:#a0aec0;padding:18px">無採購單資料</div>'; return; }
+  var h = '<div class="panel"><div class="ph"><div class="pt">驗收清單 -- ' + H(title) + '</div><button class="btn bi bx" onclick="rcDetail()">驗收報表</button></div>';
   for (var pi = 0; pi < pos.length; pi++) {
-    var po = pos[pi];
-    var poDBIdx = -1;
-    for (var px = 0; px < DB.po.length; px++) {
-      if (DB.po[px].no === po.no) { poDBIdx = px; break; }
+    var po = pos[pi]; var poDBIdx = -1;
+    for (var px = 0; px < DB.po.length; px++) { if (DB.po[px].no === po.no) { poDBIdx = px; break; } }
+    h += '<div style="margin-bottom:12px"><div style="font-weight:700;font-size:12px;color:#2b6cb0;margin-bottom:4px">' + H(po.no);
+    if (po.vendor) { h += ' <span class="ck cp">' + H(po.vendor) + '</span>'; }
+    if (po.trackNo) { h += ' <span style="font-size:11px;color:#4a5568;margin-left:6px">' + H(po.carrier||'') + ' ' + H(po.trackNo) + '</span>'; }
+    h += ' <button class="btn bw bx np" data-pi="' + poDBIdx + '" onclick="openSE(+this.dataset.pi)" style="margin-left:8px">修正寄件</button></div>';
+    for (var ii = 0; ii < (po.items||[]).length; ii++) {
+      var it = po.items[ii]; var done = !!it.arrived;
+      h += '<div class="rv' + (done?' done':'') + '" id="rv' + poDBIdx + 'x' + ii + '">';
+      h += '<input type="checkbox" style="width:15px;height:15px;cursor:pointer;flex-shrink:0" ' + (done?'checked':'') + ' data-pi="' + poDBIdx + '" data-ii="' + ii + '" onchange="rcChk(this)">';
+      h += '<div style="flex:1;min-width:0;font-size:12px"><b>' + H(it.name) + '</b>';
+      if (it.jan) { h += ' <span style="color:#718096;margin-left:5px">JAN: ' + H(it.jan) + '</span>'; }
+      if (it.soNo) { h += ' <span class="ck cy" style="margin-left:4px">SO: ' + H(it.soNo) + '</span>'; }
+      h += '</div><div style="font-size:11px;flex-shrink:0">x' + it.qty + '</div>';
+      h += '<input placeholder="重量kg" style="width:72px;padding:3px 5px;border:1px solid #cbd5e0;border-radius:4px;font-size:11px;flex-shrink:0" value="' + H(it.weight||'') + '" data-pi="' + poDBIdx + '" data-ii="' + ii + '" oninput="rcWt(this)">';
+      h += '<input placeholder="備註" style="width:110px;padding:3px 5px;border:1px solid #cbd5e0;border-radius:4px;font-size:11px;flex-shrink:0" value="' + H(it.rcNote||'') + '" data-pi="' + poDBIdx + '" data-ii="' + ii + '" oninput="rcNt(this)">';
+      h += '<div style="font-size:11px;font-weight:700;flex-shrink:0;color:' + (done?'#276749':'#c05621') + '" id="rs' + poDBIdx + 'x' + ii + '">' + (done?'已到':'未到') + '</div></div>';
     }
-    html += '<div style="margin-bottom:12px">';
-    html += '<div style="font-weight:700;font-size:12px;color:#2b6cb0;margin-bottom:4px">' + H(po.no);
-    if (po.vendor) { html += ' <span class="ck cp">' + H(po.vendor) + '</span>'; }
-    if (po.trackNo) { html += ' <span style="font-size:11px;color:#4a5568;margin-left:6px">' + H(po.carrier || '') + ' ' + H(po.trackNo) + '</span>'; }
-    html += ' <button class="btn bw bx np" data-pi="' + poDBIdx + '" onclick="openSE(+this.dataset.pi)" style="margin-left:8px">修正寄件</button>';
-    html += '</div>';
-    for (var ii = 0; ii < (po.items || []).length; ii++) {
-      var it = po.items[ii];
-      var done = !!it.arrived;
-      html += '<div class="rv' + (done ? ' done' : '') + '" id="rv' + poDBIdx + 'x' + ii + '">';
-      html += '<input type="checkbox" style="width:15px;height:15px;cursor:pointer;flex-shrink:0" ' + (done ? 'checked' : '') + ' data-pi="' + poDBIdx + '" data-ii="' + ii + '" onchange="rcChk(this)">';
-      html += '<div style="flex:1;min-width:0;font-size:12px"><b>' + H(it.name) + '</b>';
-      if (it.jan) { html += ' <span style="color:#718096;margin-left:5px">JAN: ' + H(it.jan) + '</span>'; }
-      if (it.soNo) { html += ' <span class="ck cy" style="margin-left:4px">SO: ' + H(it.soNo) + '</span>'; }
-      html += '</div>';
-      html += '<div style="font-size:11px;flex-shrink:0">x' + it.qty + '</div>';
-      html += '<input placeholder="重量kg" style="width:72px;padding:3px 5px;border:1px solid #cbd5e0;border-radius:4px;font-size:11px;flex-shrink:0" value="' + H(it.weight || '') + '" data-pi="' + poDBIdx + '" data-ii="' + ii + '" oninput="rcWt(this)">';
-      html += '<input placeholder="備註" style="width:110px;padding:3px 5px;border:1px solid #cbd5e0;border-radius:4px;font-size:11px;flex-shrink:0" value="' + H(it.rcNote || '') + '" data-pi="' + poDBIdx + '" data-ii="' + ii + '" oninput="rcNt(this)">';
-      html += '<div style="font-size:11px;font-weight:700;flex-shrink:0;color:' + (done ? '#276749' : '#c05621') + '" id="rs' + poDBIdx + 'x' + ii + '">' + (done ? '已到' : '未到') + '</div>';
-      html += '</div>';
-    }
-    html += '</div>';
+    h += '</div>';
   }
   var tot = 0, arv = 0;
-  for (var tp = 0; tp < pos.length; tp++) {
-    tot += (pos[tp].items || []).length;
-    for (var ta = 0; ta < (pos[tp].items || []).length; ta++) {
-      if (pos[tp].items[ta].arrived) { arv++; }
-    }
-  }
-  html += '<div class="sm">';
-  html += '<span>共 <b>' + tot + '</b> 項</span>';
-  html += '<span style="color:#276749">已到：<b>' + arv + '</b></span>';
-  html += '<span style="color:#c05621">未到：<b>' + (tot - arv) + '</b></span>';
-  html += '<button class="btn bs bx" onclick="rcConfirm()">確認驗收完成</button>';
-  html += '</div></div>';
-  document.getElementById('rclist').innerHTML = html;
+  for (var tp = 0; tp < pos.length; tp++) { tot += (pos[tp].items||[]).length; for (var ta = 0; ta < (pos[tp].items||[]).length; ta++) { if (pos[tp].items[ta].arrived) { arv++; } } }
+  h += '<div class="sm"><span>共 <b>' + tot + '</b> 項</span><span style="color:#276749">已到：<b>' + arv + '</b></span><span style="color:#c05621">未到：<b>' + (tot-arv) + '</b></span><button class="btn bs bx" onclick="rcConfirm()">確認驗收完成</button></div></div>';
+  document.getElementById('rclist').innerHTML = h;
 }
 
 function rcChk(el) {
-  var pi = +el.dataset.pi;
-  var ii = +el.dataset.ii;
-  var chk = el.checked;
-  var po = DB.po[pi];
-  if (!po || !po.items[ii]) { return; }
+  var pi = +el.dataset.pi, ii = +el.dataset.ii, chk = el.checked;
+  var po = DB.po[pi]; if (!po || !po.items[ii]) { return; }
   po.items[ii].arrived = chk;
   var soNo = po.items[ii].soNo;
-  if (soNo) {
-    for (var si = 0; si < DB.so.length; si++) {
-      if (DB.so[si].no === soNo) {
-        for (var xi = 0; xi < (DB.so[si].items || []).length; xi++) {
-          var sit = DB.so[si].items[xi];
-          if ((sit.jan && sit.jan === po.items[ii].jan) || sit.name === po.items[ii].name) {
-            sit.arrived = chk;
-          }
-        }
-        break;
-      }
-    }
-  }
+  if (soNo) { for (var si = 0; si < DB.so.length; si++) { if (DB.so[si].no === soNo) { for (var xi = 0; xi < (DB.so[si].items||[]).length; xi++) { var sit = DB.so[si].items[xi]; if ((sit.jan && sit.jan === po.items[ii].jan) || sit.name === po.items[ii].name) { sit.arrived = chk; } } break; } } }
   persist();
-  var row = document.getElementById('rv' + pi + 'x' + ii);
-  var stat = document.getElementById('rs' + pi + 'x' + ii);
-  if (row) { row.className = 'rv' + (chk ? ' done' : ''); }
-  if (stat) { stat.textContent = chk ? '已到' : '未到'; stat.style.color = chk ? '#276749' : '#c05621'; }
+  var row = document.getElementById('rv' + pi + 'x' + ii); if (row) { row.className = 'rv' + (chk?' done':''); }
+  var stat = document.getElementById('rs' + pi + 'x' + ii); if (stat) { stat.textContent = chk?'已到':'未到'; stat.style.color = chk?'#276749':'#c05621'; }
 }
 
-function rcWt(el) {
-  var po = DB.po[+el.dataset.pi];
-  if (po && po.items[+el.dataset.ii]) { po.items[+el.dataset.ii].weight = el.value; persist(); }
-}
-
-function rcNt(el) {
-  var po = DB.po[+el.dataset.pi];
-  if (po && po.items[+el.dataset.ii]) { po.items[+el.dataset.ii].rcNote = el.value; persist(); }
-}
+function rcWt(el) { var po = DB.po[+el.dataset.pi]; if (po && po.items[+el.dataset.ii]) { po.items[+el.dataset.ii].weight = el.value; persist(); } }
+function rcNt(el) { var po = DB.po[+el.dataset.pi]; if (po && po.items[+el.dataset.ii]) { po.items[+el.dataset.ii].rcNote = el.value; persist(); } }
 
 function rcConfirm() {
   for (var ni = 0; ni < rcNos.length; ni++) {
-    var no = rcNos[ni];
-    var po = null;
-    for (var pi = 0; pi < DB.po.length; pi++) {
-      if (DB.po[pi].no === no) { po = DB.po[pi]; break; }
-    }
+    var po = null; for (var pi = 0; pi < DB.po.length; pi++) { if (DB.po[pi].no === rcNos[ni]) { po = DB.po[pi]; break; } }
     if (!po) { continue; }
     var all = true, any = false;
-    for (var ai = 0; ai < (po.items || []).length; ai++) {
-      if (po.items[ai].arrived) { any = true; } else { all = false; }
-    }
+    for (var ai = 0; ai < (po.items||[]).length; ai++) { if (po.items[ai].arrived) { any = true; } else { all = false; } }
     po.status = all ? 'arrived' : any ? 'partial' : 'shipped';
     var soNos = [];
-    for (var si2 = 0; si2 < (po.items || []).length; si2++) {
-      var sno = po.items[si2].soNo;
-      if (sno && soNos.indexOf(sno) === -1) { soNos.push(sno); }
-    }
+    for (var si2 = 0; si2 < (po.items||[]).length; si2++) { var sno = po.items[si2].soNo; if (sno && soNos.indexOf(sno) === -1) { soNos.push(sno); } }
     for (var sni = 0; sni < soNos.length; sni++) {
-      var sno2 = soNos[sni];
-      var so = null;
-      for (var soi = 0; soi < DB.so.length; soi++) {
-        if (DB.so[soi].no === sno2) { so = DB.so[soi]; break; }
-      }
+      var so = null; for (var soi = 0; soi < DB.so.length; soi++) { if (DB.so[soi].no === soNos[sni]) { so = DB.so[soi]; break; } }
       if (!so || so.status === 'done') { continue; }
-      var allPOsDone = true, anyPOsDone = false;
+      var allD = true, anyD = false;
       for (var poi2 = 0; poi2 < DB.po.length; poi2++) {
-        var hasSno = false;
-        for (var iti = 0; iti < (DB.po[poi2].items || []).length; iti++) {
-          if (DB.po[poi2].items[iti].soNo === sno2) { hasSno = true; break; }
-        }
-        if (!hasSno) { continue; }
-        for (var iti2 = 0; iti2 < (DB.po[poi2].items || []).length; iti2++) {
-          var itx = DB.po[poi2].items[iti2];
-          if (itx.soNo !== sno2) { continue; }
-          if (itx.arrived) { anyPOsDone = true; } else { allPOsDone = false; }
+        for (var iti = 0; iti < (DB.po[poi2].items||[]).length; iti++) {
+          if (DB.po[poi2].items[iti].soNo !== soNos[sni]) { continue; }
+          if (DB.po[poi2].items[iti].arrived) { anyD = true; } else { allD = false; }
         }
       }
-      so.status = allPOsDone ? 'arrived' : anyPOsDone ? 'partial' : 'ordered';
+      so.status = allD ? 'arrived' : anyD ? 'partial' : 'ordered';
     }
   }
-  persist();
-  showToast('驗收狀態已更新');
-  var pos = [];
-  for (var rci = 0; rci < rcNos.length; rci++) {
-    for (var poi3 = 0; poi3 < DB.po.length; poi3++) {
-      if (DB.po[poi3].no === rcNos[rci]) { pos.push(DB.po[poi3]); break; }
-    }
-  }
+  persist(); showToast('驗收狀態已更新');
+  var pos = []; for (var rci = 0; rci < rcNos.length; rci++) { for (var poi3 = 0; poi3 < DB.po.length; poi3++) { if (DB.po[poi3].no === rcNos[rci]) { pos.push(DB.po[poi3]); break; } } }
   buildRC(pos, rcTitle);
 }
 
 function rcDetail() {
-  var pos = [];
-  for (var ri = 0; ri < rcNos.length; ri++) {
-    for (var pi = 0; pi < DB.po.length; pi++) {
-      if (DB.po[pi].no === rcNos[ri]) { pos.push(DB.po[pi]); break; }
-    }
-  }
+  var pos = []; for (var ri = 0; ri < rcNos.length; ri++) { for (var pi = 0; pi < DB.po.length; pi++) { if (DB.po[pi].no === rcNos[ri]) { pos.push(DB.po[pi]); break; } } }
   if (!pos.length) { showToast('請先選擇驗收批次'); return; }
   document.getElementById('rcdv-tt').textContent = '驗收詳情 -- ' + rcTitle;
-  var rows = '';
-  var tot = 0, arv = 0;
-  for (var pi2 = 0; pi2 < pos.length; pi2++) {
-    var po = pos[pi2];
-    for (var ii = 0; ii < (po.items || []).length; ii++) {
-      var it = po.items[ii];
-      tot++;
-      if (it.arrived) { arv++; }
-      rows += '<tr>';
-      rows += '<td>' + H(it.name) + '</td>';
-      rows += '<td>' + H(it.jan || '-') + '</td>';
-      rows += '<td>' + it.qty + '</td>';
-      rows += '<td>' + (it.soNo ? '<span class="ck cy">' + H(it.soNo) + '</span>' : '-') + '</td>';
-      rows += '<td>' + H(po.no) + '</td>';
-      rows += '<td>' + H(it.weight || '-') + '</td>';
-      rows += '<td>' + (it.arrived ? '<span class="ck cg">已到</span>' : '<span class="ck cr">未到</span>') + '</td>';
-      rows += '<td>' + H(it.rcNote || '-') + '</td>';
-      rows += '</tr>';
-    }
-  }
-  document.getElementById('rcdv-b').innerHTML =
-    '<table><thead><tr><th>商品</th><th>JAN</th><th>數量</th><th>對應SO</th><th>採購單</th><th>重量</th><th>到貨</th><th>備註</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<div class="sm" style="margin-top:8px"><span>共 <b>' + tot + '</b> 項</span><span style="color:#276749">已到：<b>' + arv + '</b></span><span style="color:#c05621">未到：<b>' + (tot - arv) + '</b></span></div>';
+  var rows = ''; var tot = 0, arv = 0;
+  for (var pi2 = 0; pi2 < pos.length; pi2++) { for (var ii = 0; ii < (pos[pi2].items||[]).length; ii++) { var it = pos[pi2].items[ii]; tot++; if (it.arrived) { arv++; } rows += '<tr><td>' + H(it.name) + '</td><td>' + H(it.jan||'-') + '</td><td>' + it.qty + '</td><td>' + (it.soNo?'<span class="ck cy">'+H(it.soNo)+'</span>':'-') + '</td><td>' + H(pos[pi2].no) + '</td><td>' + H(it.weight||'-') + '</td><td>' + (it.arrived?'<span class="ck cg">已到</span>':'<span class="ck cr">未到</span>') + '</td><td>' + H(it.rcNote||'-') + '</td></tr>'; } }
+  document.getElementById('rcdv-b').innerHTML = '<table><thead><tr><th>商品</th><th>JAN</th><th>數量</th><th>對應SO</th><th>採購單</th><th>重量</th><th>到貨</th><th>備註</th></tr></thead><tbody>' + rows + '</tbody></table><div class="sm" style="margin-top:8px"><span>共 <b>' + tot + '</b> 項</span><span style="color:#276749">已到：<b>' + arv + '</b></span><span style="color:#c05621">未到：<b>' + (tot-arv) + '</b></span></div>';
   openM('mo-rcdv');
 }
 
-// ── DELIVERY ──
 var dvEI = -1;
 
 function drawDV() {
   var q = (document.getElementById('dvq').value || '').toLowerCase();
-  var html = '';
+  var h = '';
   for (var a = 0; a < DB.so.length; a++) {
-    var s = DB.so[a];
-    if (s.status !== 'arrived') { continue; }
-    var match = !q;
-    if (!match && s.no.toLowerCase().indexOf(q) !== -1) { match = true; }
-    if (!match) {
-      for (var xi = 0; xi < (s.items || []).length; xi++) {
-        if (s.items[xi].name.toLowerCase().indexOf(q) !== -1) { match = true; break; }
-      }
-    }
-    if (!match) { continue; }
-    var det = '';
-    for (var di = 0; di < (s.items || []).length; di++) {
-      var it = s.items[di];
-      det += '<div style="font-size:11px;padding:2px 0;border-bottom:1px solid #f0f4f8">';
-      det += '<b>' + H(it.name) + '</b>';
-      if (it.jan) { det += ' <span style="color:#718096">' + H(it.jan) + '</span>'; }
-      det += ' x' + it.qty;
-      det += '</div>';
-    }
-    html += '<tr>';
-    html += '<td><b>' + H(s.no) + '</b><br><span style="font-size:10px;color:#718096">' + H(s.date || '') + '</span></td>';
-    html += '<td>' + det + '</td>';
-    html += '<td>' + bdg(s.status) + '</td>';
-    html += '<td style="white-space:nowrap">';
-    html += '<button class="btn bw bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="openSO(+this.dataset.i)">編輯訂單</button>';
-    html += '<button class="btn bs bx" style="display:block" data-i="' + a + '" onclick="openDV(+this.dataset.i)">出貨&列印</button>';
-    html += '</td></tr>';
+    var s = DB.so[a]; if (s.status !== 'arrived') { continue; }
+    var match = !q || s.no.toLowerCase().indexOf(q) !== -1; if (!match) { for (var xi = 0; xi < (s.items||[]).length; xi++) { if (s.items[xi].name.toLowerCase().indexOf(q) !== -1) { match = true; break; } } } if (!match) { continue; }
+    var det = ''; for (var di = 0; di < (s.items||[]).length; di++) { var it = s.items[di]; det += '<div style="font-size:11px;padding:2px 0;border-bottom:1px solid #f0f4f8"><b>' + H(it.name) + '</b>' + (it.jan?' <span style="color:#718096">'+H(it.jan)+'</span>':'') + ' x' + it.qty + '</div>'; }
+    h += '<tr><td><b>' + H(s.no) + '</b><br><span style="font-size:10px;color:#718096">' + H(s.date||'') + '</span></td><td>' + det + '</td><td>' + bdg(s.status) + '</td>';
+    h += '<td style="white-space:nowrap"><button class="btn bw bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="openSO(+this.dataset.i)">編輯訂單</button><button class="btn bs bx" style="display:block" data-i="' + a + '" onclick="openDV(+this.dataset.i)">出貨&列印</button></td></tr>';
   }
-  document.getElementById('dvtb').innerHTML = html || '<tr><td colspan="4" style="text-align:center;color:#a0aec0;padding:18px">目前無待出貨訂單</td></tr>';
+  document.getElementById('dvtb').innerHTML = h || '<tr><td colspan="4" style="text-align:center;color:#a0aec0;padding:18px">目前無待出貨訂單</td></tr>';
 }
 
-function openDV(idx) {
-  dvEI = idx;
-  var s = DB.so[idx];
-  if (!s) { return; }
-  document.getElementById('dv-tr').value = s.dvTrk || '';
-  document.getElementById('dv-dt').value = s.dvDt || new Date().toISOString().slice(0, 10);
-  document.getElementById('dv-st').value = s.status === 'done' ? 'done' : 'arrived';
-  openM('mo-dv');
-}
+function openDV(idx) { dvEI = idx; var s = DB.so[idx]; if (!s) { return; } document.getElementById('dv-tr').value = s.dvTrk||''; document.getElementById('dv-dt').value = s.dvDt||new Date().toISOString().slice(0,10); document.getElementById('dv-st').value = s.status==='done'?'done':'arrived'; openM('mo-dv'); }
 
-function saveDV() {
-  var s = DB.so[dvEI];
-  if (!s) { return; }
-  s.dvTrk = document.getElementById('dv-tr').value;
-  s.dvDt = document.getElementById('dv-dt').value;
-  s.status = document.getElementById('dv-st').value;
-  persist();
-  closeM('mo-dv');
-  if (s.status === 'done') { showPrint(s); }
-  drawDV();
-  drawDB();
-}
+function saveDV() { var s = DB.so[dvEI]; if (!s) { return; } s.dvTrk = document.getElementById('dv-tr').value; s.dvDt = document.getElementById('dv-dt').value; s.status = document.getElementById('dv-st').value; persist(); closeM('mo-dv'); if (s.status === 'done') { showPrint(s); } drawDV(); drawDB(); }
 
 function showPrint(s) {
   var rows = '';
-  for (var i = 0; i < (s.items || []).length; i++) {
-    var it = s.items[i];
-    rows += '<tr>';
-    rows += '<td style="padding:5px 7px;border-bottom:1px solid #e2e8f0">' + H(it.name) + '</td>';
-    rows += '<td style="padding:5px 7px;border-bottom:1px solid #e2e8f0">' + H(it.jan || '-') + '</td>';
-    rows += '<td style="padding:5px 7px;border-bottom:1px solid #e2e8f0">' + it.qty + '</td>';
-    rows += '</tr>';
-  }
-  document.getElementById('pr-b').innerHTML =
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px;font-size:13px">' +
-    '<div><b>訂單編號：</b>' + H(s.no) + '</div>' +
-    '<div><b>訂單日期：</b>' + H(s.date || '') + '</div>' +
-    '<div><b>超商單號：</b>' + H(s.dvTrk || '-') + '</div>' +
-    '<div><b>出貨日期：</b>' + H(s.dvDt || '-') + '</div>' +
-    '</div>' +
-    '<table style="width:100%;border-collapse:collapse;margin-bottom:11px">' +
-    '<thead><tr style="background:#f7fafc">' +
-    '<th style="padding:5px 7px;text-align:left;border-bottom:1px solid #e2e8f0">商品名稱</th>' +
-    '<th style="padding:5px 7px;text-align:left;border-bottom:1px solid #e2e8f0">JAN</th>' +
-    '<th style="padding:5px 7px;text-align:left;border-bottom:1px solid #e2e8f0">數量</th>' +
-    '</tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<div style="text-align:center;font-size:10px;color:#718096;padding-top:7px;border-top:1px dashed #ccc">出貨日期：' + H(s.dvDt || new Date().toLocaleDateString('zh-TW')) + '</div>';
+  for (var i = 0; i < (s.items||[]).length; i++) { var it = s.items[i]; rows += '<tr><td style="padding:5px 7px;border-bottom:1px solid #e2e8f0">' + H(it.name) + '</td><td style="padding:5px 7px;border-bottom:1px solid #e2e8f0">' + H(it.jan||'-') + '</td><td style="padding:5px 7px;border-bottom:1px solid #e2e8f0">' + it.qty + '</td></tr>'; }
+  document.getElementById('pr-b').innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px;font-size:13px"><div><b>訂單編號：</b>' + H(s.no) + '</div><div><b>訂單日期：</b>' + H(s.date||'') + '</div><div><b>超商單號：</b>' + H(s.dvTrk||'-') + '</div><div><b>出貨日期：</b>' + H(s.dvDt||'-') + '</div></div><table style="width:100%;border-collapse:collapse;margin-bottom:11px"><thead><tr style="background:#f7fafc"><th style="padding:5px 7px;text-align:left;border-bottom:1px solid #e2e8f0">商品名稱</th><th style="padding:5px 7px;text-align:left;border-bottom:1px solid #e2e8f0">JAN</th><th style="padding:5px 7px;text-align:left;border-bottom:1px solid #e2e8f0">數量</th></tr></thead><tbody>' + rows + '</tbody></table><div style="text-align:center;font-size:10px;color:#718096;padding-top:7px;border-top:1px dashed #ccc">出貨日期：' + H(s.dvDt||new Date().toLocaleDateString('zh-TW')) + '</div>';
   openM('mo-pr');
 }
 
-// ── REPORT ──
-var rpData = {};
-var rpRows = [];
+var rpData = {}, rpRows = [];
 
 function initMonths() {
   var mo = {};
-  for (var i = 0; i < DB.so.length; i++) {
-    if (DB.so[i].date) { mo[DB.so[i].date.slice(0, 7)] = 1; }
-  }
-  for (var j = 0; j < DB.po.length; j++) {
-    var items = DB.po[j].items || [];
-    for (var k = 0; k < items.length; k++) {
-      if (items[k].arrived && DB.po[j].shipDt) { mo[DB.po[j].shipDt.slice(0, 7)] = 1; }
-    }
-  }
-  var ks = Object.keys(mo).sort().reverse();
-  if (!ks.length) { ks = [new Date().toISOString().slice(0, 7)]; }
-  var opts = '';
-  for (var m = 0; m < ks.length; m++) { opts += '<option value="' + ks[m] + '">' + ks[m] + '</option>'; }
+  for (var i = 0; i < DB.so.length; i++) { if (DB.so[i].date) { mo[DB.so[i].date.slice(0,7)] = 1; } }
+  for (var j = 0; j < DB.po.length; j++) { for (var k = 0; k < (DB.po[j].items||[]).length; k++) { if (DB.po[j].items[k].arrived && DB.po[j].shipDt) { mo[DB.po[j].shipDt.slice(0,7)] = 1; } } }
+  var ks = Object.keys(mo).sort().reverse(); if (!ks.length) { ks = [new Date().toISOString().slice(0,7)]; }
+  var opts = ''; for (var m = 0; m < ks.length; m++) { opts += '<option value="' + ks[m] + '">' + ks[m] + '</option>'; }
   document.getElementById('rpm').innerHTML = opts;
 }
 
 function getRPRows(month) {
   var rows = [];
-  for (var pi = 0; pi < DB.po.length; pi++) {
-    var po = DB.po[pi];
-    for (var ii = 0; ii < (po.items || []).length; ii++) {
-      var it = po.items[ii];
-      if (!it.arrived) { continue; }
-      var am = (po.shipDt || '').slice(0, 7) || month;
-      if (am !== month) { continue; }
-      var so = null;
-      for (var si = 0; si < DB.so.length; si++) {
-        if (DB.so[si].no === it.soNo) { so = DB.so[si]; break; }
-      }
-      var soIt = null;
-      if (so) {
-        for (var sii = 0; sii < (so.items || []).length; sii++) {
-          var sit = so.items[sii];
-          if ((sit.jan && sit.jan === it.jan) || sit.name === it.name) { soIt = sit; break; }
-        }
-      }
-      rows.push({ poNo: po.no, it: it, so: so, soIt: soIt, key: po.no + '__' + ii });
-    }
-  }
+  for (var pi = 0; pi < DB.po.length; pi++) { for (var ii = 0; ii < (DB.po[pi].items||[]).length; ii++) { var it = DB.po[pi].items[ii]; if (!it.arrived) { continue; } var am = (DB.po[pi].shipDt||'').slice(0,7)||month; if (am !== month) { continue; } var so = null; for (var si = 0; si < DB.so.length; si++) { if (DB.so[si].no === it.soNo) { so = DB.so[si]; break; } } var soIt = null; if (so) { for (var sii = 0; sii < (so.items||[]).length; sii++) { if ((so.items[sii].jan && so.items[sii].jan === it.jan) || so.items[sii].name === it.name) { soIt = so.items[sii]; break; } } } rows.push({ poNo:DB.po[pi].no, it:it, so:so, soIt:soIt, key:DB.po[pi].no+'__'+ii }); } }
   return rows;
 }
 
 function calcRP(it, so, soIt, key) {
-  var rd = rpData[key] || {};
-  var twd = soIt ? N(soIt.twd) : 0;
-  var feePct = so ? N(so.feePct) : 0;
-  var feeAmt = Math.round(twd * feePct / 100);
-  var ordTot = so ? soTotal(so) : 0;
-  var jpy = N(it.jpy);
-  var pack = rd.pack !== undefined ? N(rd.pack) : 0;
-  var jpyTot = jpy + pack;
-  var rate = rd.rate !== undefined ? N(rd.rate) : 0;
-  var twdJpy = rate ? Math.round(jpyTot * rate) : 0;
-  var boxFee = rd.boxFee !== undefined ? N(rd.boxFee) : 0;
-  var tax = Math.round(twd * 0.01);
-  var wIt = N(it.weight || (rd.wIt !== undefined ? rd.wIt : 0));
-  var wBox = rd.wBox !== undefined ? N(rd.wBox) : 0;
-  var wTot = Math.round((wIt + wBox) * 1000) / 1000;
-  var pkg = rd.pkg !== undefined ? N(rd.pkg) : 220;
-  var intlU = Math.round(wTot * pkg);
-  var qty = N(it.qty || 1);
-  var intlTot = intlU * qty;
-  var cost = twdJpy + boxFee + tax + intlTot;
-  var rev = twd * qty;
-  var profit = rev - cost;
-  var pctP = rev > 0 ? Math.round(profit / rev * 1000) / 10 : 0;
-  return { twd: twd, feePct: feePct, feeAmt: feeAmt, ordTot: ordTot, jpy: jpy, pack: pack, jpyTot: jpyTot, rate: rate, twdJpy: twdJpy, boxFee: boxFee, tax: tax, wIt: wIt, wBox: wBox, wTot: wTot, pkg: pkg, intlU: intlU, qty: qty, intlTot: intlTot, cost: cost, rev: rev, profit: profit, pctP: pctP, rd: rd };
+  var rd = rpData[key]||{};
+  var twd = soIt?N(soIt.twd):0; var feePct = so?N(so.feePct):0; var feeAmt = Math.round(twd*feePct/100);
+  var ordTot = so?soTotal(so):0; var jpy = N(it.jpy);
+  var pack = rd.pack!==undefined?N(rd.pack):0; var jpyTot = jpy+pack;
+  var rate = rd.rate!==undefined?N(rd.rate):0; var twdJpy = rate?Math.round(jpyTot*rate):0;
+  var boxFee = rd.boxFee!==undefined?N(rd.boxFee):0; var tax = Math.round(twd*0.01);
+  var wIt = N(it.weight||(rd.wIt!==undefined?rd.wIt:0)); var wBox = rd.wBox!==undefined?N(rd.wBox):0;
+  var wTot = Math.round((wIt+wBox)*1000)/1000;
+  var pkg = rd.pkg!==undefined?N(rd.pkg):220; var intlU = Math.round(wTot*pkg);
+  var qty = N(it.qty||1); var intlTot = intlU*qty;
+  var cost = twdJpy+boxFee+tax+intlTot; var rev = twd*qty; var profit = rev-cost;
+  var pctP = rev>0?Math.round(profit/rev*1000)/10:0;
+  return { twd:twd,feePct:feePct,feeAmt:feeAmt,ordTot:ordTot,jpy:jpy,pack:pack,jpyTot:jpyTot,rate:rate,twdJpy:twdJpy,boxFee:boxFee,tax:tax,wIt:wIt,wBox:wBox,wTot:wTot,pkg:pkg,intlU:intlU,qty:qty,intlTot:intlTot,cost:cost,rev:rev,profit:profit,pctP:pctP,rd:rd };
 }
 
 function applyG() {
-  var r = document.getElementById('gr').value.trim();
-  var k = document.getElementById('gk').value.trim();
-  var p = document.getElementById('gp').value.trim();
-  for (var i = 0; i < rpRows.length; i++) {
-    var key = rpRows[i].key;
-    if (!rpData[key]) { rpData[key] = {}; }
-    if (r) { rpData[key].rate = r; }
-    if (k) { rpData[key].pkg = k; }
-    if (p) { rpData[key].pack = p; }
-  }
-  drawRP();
-  showToast('已套用全部');
+  var r = document.getElementById('gr').value.trim(); var k = document.getElementById('gk').value.trim(); var p = document.getElementById('gp').value.trim();
+  for (var i = 0; i < rpRows.length; i++) { if (!rpData[rpRows[i].key]) { rpData[rpRows[i].key] = {}; } if (r) { rpData[rpRows[i].key].rate = r; } if (k) { rpData[rpRows[i].key].pkg = k; } if (p) { rpData[rpRows[i].key].pack = p; } }
+  drawRP(); showToast('已套用全部');
 }
 
 function rpInp(el) {
-  var ri = +el.dataset.ri;
-  var f = el.dataset.f;
-  if (!rpRows[ri]) { return; }
-  var key = rpRows[ri].key;
-  if (!rpData[key]) { rpData[key] = {}; }
-  rpData[key][f] = el.value;
-  var row = rpRows[ri];
-  var c = calcRP(row.it, row.so, row.soIt, key);
-  var trs = document.getElementById('rptb').querySelectorAll('tr');
-  var tr = trs[ri];
-  if (!tr) { return; }
+  var ri = +el.dataset.ri, f = el.dataset.f; if (!rpRows[ri]) { return; }
+  var key = rpRows[ri].key; if (!rpData[key]) { rpData[key] = {}; } rpData[key][f] = el.value;
+  var c = calcRP(rpRows[ri].it, rpRows[ri].so, rpRows[ri].soIt, key);
+  var trs = document.getElementById('rptb').querySelectorAll('tr'); var tr = trs[ri]; if (!tr) { return; }
   var autos = tr.querySelectorAll('.ra');
-  var vals = [
-    c.twd ? 'NT$' + c.twd.toLocaleString() : '-',
-    c.feePct + '% NT$' + c.feeAmt.toLocaleString(),
-    c.ordTot ? 'NT$' + c.ordTot.toLocaleString() : '-',
-    c.jpy ? 'Y' + c.jpy.toLocaleString() : '-',
-    c.jpyTot ? 'Y' + c.jpyTot.toLocaleString() : '-',
-    c.twdJpy ? 'NT$' + c.twdJpy.toLocaleString() : '-',
-    c.tax ? 'NT$' + c.tax.toLocaleString() : '-',
-    c.wIt ? String(c.wIt) : '-',
-    c.wTot ? String(c.wTot) : '-',
-    c.intlU ? 'NT$' + c.intlU.toLocaleString() : '-',
-    String(c.qty),
-    c.intlTot ? 'NT$' + c.intlTot.toLocaleString() : '-',
-    c.cost ? 'NT$' + c.cost.toLocaleString() : '-',
-    c.rev ? (c.profit >= 0 ? '+' : '') + ' NT$' + c.profit.toLocaleString() : '-',
-    c.rev ? c.pctP + '%' : '-'
-  ];
-  for (var vi = 0; vi < autos.length && vi < vals.length; vi++) {
-    autos[vi].textContent = vals[vi];
-  }
+  var vals = [c.twd?'NT$'+c.twd.toLocaleString():'-', c.feePct+'% NT$'+c.feeAmt.toLocaleString(), c.ordTot?'NT$'+c.ordTot.toLocaleString():'-', c.jpy?'Y'+c.jpy.toLocaleString():'-', c.jpyTot?'Y'+c.jpyTot.toLocaleString():'-', c.twdJpy?'NT$'+c.twdJpy.toLocaleString():'-', c.tax?'NT$'+c.tax.toLocaleString():'-', c.wIt?String(c.wIt):'-', c.wTot?String(c.wTot):'-', c.intlU?'NT$'+c.intlU.toLocaleString():'-', String(c.qty), c.intlTot?'NT$'+c.intlTot.toLocaleString():'-', c.cost?'NT$'+c.cost.toLocaleString():'-', c.rev?(c.profit>=0?'+':'')+' NT$'+c.profit.toLocaleString():'-', c.rev?c.pctP+'%':'-'];
+  for (var vi = 0; vi < autos.length && vi < vals.length; vi++) { autos[vi].textContent = vals[vi]; }
   rpTotals();
 }
 
 function rpTotals() {
-  var s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0, sC = 0, sR = 0, sP = 0;
-  for (var i = 0; i < rpRows.length; i++) {
-    var rw = rpRows[i];
-    var c = calcRP(rw.it, rw.so, rw.soIt, rw.key);
-    s0 += c.twd * c.qty;
-    s1 += c.feeAmt * c.qty;
-    s2 += c.twdJpy * c.qty;
-    s3 += c.qty;
-    s4 += c.intlTot;
-    sC += c.cost;
-    sR += c.rev;
-    sP += c.profit;
-  }
-  var sp = sR > 0 ? Math.round(sP / sR * 1000) / 10 : 0;
-  document.getElementById('rpft').innerHTML =
-    '<tr class="rtot"><td colspan="2" style="font-size:11px">合計（' + rpRows.length + '項）</td>' +
-    '<td>NT$' + s0.toLocaleString() + '</td>' +
-    '<td>NT$' + s1.toLocaleString() + '</td>' +
-    '<td>-</td><td colspan="4">-</td>' +
-    '<td>NT$' + s2.toLocaleString() + '</td>' +
-    '<td colspan="5">-</td><td colspan="1">-</td>' +
-    '<td>' + s3 + '</td>' +
-    '<td>NT$' + s4.toLocaleString() + '</td>' +
-    '<td style="color:#c05621">NT$' + sC.toLocaleString() + '</td>' +
-    '<td style="color:' + (sP >= 0 ? '#276749' : '#e53e3e') + '">' + (sP >= 0 ? '+' : '') + ' NT$' + sP.toLocaleString() + '</td>' +
-    '<td style="color:' + (sp >= 0 ? '#276749' : '#e53e3e') + '">' + sp + '%</td>' +
-    '</tr>';
+  var s0=0,s1=0,s2=0,s3=0,s4=0,sC=0,sR=0,sP=0;
+  for (var i = 0; i < rpRows.length; i++) { var c = calcRP(rpRows[i].it,rpRows[i].so,rpRows[i].soIt,rpRows[i].key); s0+=c.twd*c.qty; s1+=c.feeAmt*c.qty; s2+=c.twdJpy*c.qty; s3+=c.qty; s4+=c.intlTot; sC+=c.cost; sR+=c.rev; sP+=c.profit; }
+  var sp = sR>0?Math.round(sP/sR*1000)/10:0;
+  document.getElementById('rpft').innerHTML = '<tr class="rtot"><td colspan="2" style="font-size:11px">合計（'+rpRows.length+'項）</td><td>NT$'+s0.toLocaleString()+'</td><td>NT$'+s1.toLocaleString()+'</td><td>-</td><td colspan="4">-</td><td>NT$'+s2.toLocaleString()+'</td><td colspan="5">-</td><td colspan="1">-</td><td>'+s3+'</td><td>NT$'+s4.toLocaleString()+'</td><td style="color:#c05621">NT$'+sC.toLocaleString()+'</td><td style="color:'+(sP>=0?'#276749':'#e53e3e')+'">'+(sP>=0?'+':'')+' NT$'+sP.toLocaleString()+'</td><td style="color:'+(sp>=0?'#276749':'#e53e3e')+'">'+sp+'%</td></tr>';
   var cards = document.getElementById('rpcards');
   if (!rpRows.length) { cards.style.display = 'none'; return; }
   cards.style.display = 'grid';
-  var cdata = [
-    { label: '商品總收入', val: 'NT$' + sR.toLocaleString(), color: '#2b6cb0' },
-    { label: '總成本', val: 'NT$' + sC.toLocaleString(), color: '#c05621' },
-    { label: '毛利', val: (sP >= 0 ? '+' : '') + ' NT$' + sP.toLocaleString(), color: sP >= 0 ? '#276749' : '#e53e3e' },
-    { label: '毛利率', val: sp + '%', color: sp >= 0 ? '#276749' : '#e53e3e' }
-  ];
+  var cdata = [{label:'商品總收入',val:'NT$'+sR.toLocaleString(),color:'#2b6cb0'},{label:'總成本',val:'NT$'+sC.toLocaleString(),color:'#c05621'},{label:'毛利',val:(sP>=0?'+':'')+' NT$'+sP.toLocaleString(),color:sP>=0?'#276749':'#e53e3e'},{label:'毛利率',val:sp+'%',color:sp>=0?'#276749':'#e53e3e'}];
   var ch = '';
-  for (var ci = 0; ci < cdata.length; ci++) {
-    var cd = cdata[ci];
-    ch += '<div class="sum-card" style="border-left:4px solid ' + cd.color + '">';
-    ch += '<div class="sl">' + cd.label + '</div>';
-    ch += '<div class="sv" style="color:' + cd.color + '">' + cd.val + '</div>';
-    ch += '</div>';
-  }
+  for (var ci = 0; ci < cdata.length; ci++) { ch += '<div class="sum-card" style="border-left:4px solid '+cdata[ci].color+'"><div class="sl">'+cdata[ci].label+'</div><div class="sv" style="color:'+cdata[ci].color+'">'+cdata[ci].val+'</div></div>'; }
   cards.innerHTML = ch;
 }
 
@@ -1654,236 +1140,64 @@ function drawRP() {
   var month = document.getElementById('rpm').value;
   rpRows = getRPRows(month);
   var tb = document.getElementById('rptb');
-  if (!rpRows.length) {
-    tb.innerHTML = '<tr><td colspan="22" style="text-align:center;color:#a0aec0;padding:20px">本月無已驗收到貨商品</td></tr>';
-    document.getElementById('rpft').innerHTML = '';
-    document.getElementById('rpcards').style.display = 'none';
-    return;
-  }
-  var html = '';
+  if (!rpRows.length) { tb.innerHTML = '<tr><td colspan="22" style="text-align:center;color:#a0aec0;padding:20px">本月無已驗收到貨商品</td></tr>'; document.getElementById('rpft').innerHTML = ''; document.getElementById('rpcards').style.display = 'none'; return; }
+  var h = '';
   for (var ri = 0; ri < rpRows.length; ri++) {
-    var rw = rpRows[ri];
-    var c = calcRP(rw.it, rw.so, rw.soIt, rw.key);
-    var rd = c.rd;
-    html += '<tr>';
-    html += '<td style="font-size:11px;min-width:90px">' + H(rw.it.name) + '</td>';
-    html += '<td style="font-size:11px">' + H(rw.it.jan || '-') + '</td>';
-    html += '<td class="ra">' + (c.twd ? 'NT$' + c.twd.toLocaleString() : '-') + '</td>';
-    html += '<td class="ra">' + c.feePct + '% NT$' + c.feeAmt.toLocaleString() + '</td>';
-    html += '<td class="ra" style="color:#2b6cb0;font-weight:700">' + (c.ordTot ? 'NT$' + c.ordTot.toLocaleString() : '-') + '</td>';
-    html += '<td class="ra">' + (c.jpy ? 'Y' + c.jpy.toLocaleString() : '-') + '</td>';
-    html += '<td><input style="width:62px;padding:2px 4px;border:1px solid #cbd5e0;border-radius:3px;font-size:11px" data-ri="' + ri + '" data-f="pack" value="' + (rd.pack !== undefined ? rd.pack : '') + '" oninput="rpInp(this)"></td>';
-    html += '<td class="ra">' + (c.jpyTot ? 'Y' + c.jpyTot.toLocaleString() : '-') + '</td>';
-    html += '<td><input style="width:62px;padding:2px 4px;border:1px solid #cbd5e0;border-radius:3px;font-size:11px" data-ri="' + ri + '" data-f="rate" value="' + (rd.rate !== undefined ? rd.rate : '') + '" oninput="rpInp(this)"></td>';
-    html += '<td class="ra">' + (c.twdJpy ? 'NT$' + c.twdJpy.toLocaleString() : '-') + '</td>';
-    html += '<td><input style="width:62px;padding:2px 4px;border:1px solid #cbd5e0;border-radius:3px;font-size:11px" data-ri="' + ri + '" data-f="boxFee" value="' + (rd.boxFee !== undefined ? rd.boxFee : '') + '" oninput="rpInp(this)"></td>';
-    html += '<td class="ra" style="color:#805ad5">' + (c.tax ? 'NT$' + c.tax.toLocaleString() : '-') + '</td>';
-    html += '<td class="ra">' + (c.wIt ? String(c.wIt) : '-') + '</td>';
-    html += '<td><input style="width:55px;padding:2px 4px;border:1px solid #cbd5e0;border-radius:3px;font-size:11px" data-ri="' + ri + '" data-f="wBox" value="' + (rd.wBox !== undefined ? rd.wBox : '') + '" oninput="rpInp(this)"></td>';
-    html += '<td class="ra">' + (c.wTot ? String(c.wTot) : '-') + '</td>';
-    html += '<td><input style="width:55px;padding:2px 4px;border:1px solid #cbd5e0;border-radius:3px;font-size:11px" data-ri="' + ri + '" data-f="pkg" value="' + (rd.pkg !== undefined ? rd.pkg : 220) + '" oninput="rpInp(this)"></td>';
-    html += '<td class="ra">' + (c.intlU ? 'NT$' + c.intlU.toLocaleString() : '-') + '</td>';
-    html += '<td class="ra">' + c.qty + '</td>';
-    html += '<td class="ra">' + (c.intlTot ? 'NT$' + c.intlTot.toLocaleString() : '-') + '</td>';
-    html += '<td class="ra" style="color:#c05621">' + (c.cost ? 'NT$' + c.cost.toLocaleString() : '-') + '</td>';
-    html += '<td class="ra" style="color:' + (c.profit >= 0 ? '#276749' : '#e53e3e') + ';font-weight:700">' + (c.rev ? (c.profit >= 0 ? '+' : '') + ' NT$' + c.profit.toLocaleString() : '-') + '</td>';
-    html += '<td class="ra" style="color:' + (c.pctP >= 0 ? '#276749' : '#e53e3e') + ';font-weight:700">' + (c.rev ? c.pctP + '%' : '-') + '</td>';
-    html += '</tr>';
+    var rw = rpRows[ri]; var c = calcRP(rw.it,rw.so,rw.soIt,rw.key); var rd = c.rd;
+    h += '<tr>';
+    h += '<td style="font-size:11px;min-width:90px">' + H(rw.it.name) + '</td>';
+    h += '<td style="font-size:11px">' + H(rw.it.jan||'-') + '</td>';
+    h += '<td class="ra">' + (c.twd?'NT$'+c.twd.toLocaleString():'-') + '</td>';
+    h += '<td class="ra">' + c.feePct + '% NT$' + c.feeAmt.toLocaleString() + '</td>';
+    h += '<td class="ra" style="color:#2b6cb0;font-weight:700">' + (c.ordTot?'NT$'+c.ordTot.toLocaleString():'-') + '</td>';
+    h += '<td class="ra">' + (c.jpy?'Y'+c.jpy.toLocaleString():'-') + '</td>';
+    h += '<td><input style="width:62px;padding:2px 4px;border:1px solid #cbd5e0;border-radius:3px;font-size:11px" data-ri="' + ri + '" data-f="pack" value="' + (rd.pack!==undefined?rd.pack:'') + '" oninput="rpInp(this)"></td>';
+    h += '<td class="ra">' + (c.jpyTot?'Y'+c.jpyTot.toLocaleString():'-') + '</td>';
+    h += '<td><input style="width:62px;padding:2px 4px;border:1px solid #cbd5e0;border-radius:3px;font-size:11px" data-ri="' + ri + '" data-f="rate" value="' + (rd.rate!==undefined?rd.rate:'') + '" oninput="rpInp(this)"></td>';
+    h += '<td class="ra">' + (c.twdJpy?'NT$'+c.twdJpy.toLocaleString():'-') + '</td>';
+    h += '<td><input style="width:62px;padding:2px 4px;border:1px solid #cbd5e0;border-radius:3px;font-size:11px" data-ri="' + ri + '" data-f="boxFee" value="' + (rd.boxFee!==undefined?rd.boxFee:'') + '" oninput="rpInp(this)"></td>';
+    h += '<td class="ra" style="color:#805ad5">' + (c.tax?'NT$'+c.tax.toLocaleString():'-') + '</td>';
+    h += '<td class="ra">' + (c.wIt?String(c.wIt):'-') + '</td>';
+    h += '<td><input style="width:55px;padding:2px 4px;border:1px solid #cbd5e0;border-radius:3px;font-size:11px" data-ri="' + ri + '" data-f="wBox" value="' + (rd.wBox!==undefined?rd.wBox:'') + '" oninput="rpInp(this)"></td>';
+    h += '<td class="ra">' + (c.wTot?String(c.wTot):'-') + '</td>';
+    h += '<td><input style="width:55px;padding:2px 4px;border:1px solid #cbd5e0;border-radius:3px;font-size:11px" data-ri="' + ri + '" data-f="pkg" value="' + (rd.pkg!==undefined?rd.pkg:220) + '" oninput="rpInp(this)"></td>';
+    h += '<td class="ra">' + (c.intlU?'NT$'+c.intlU.toLocaleString():'-') + '</td>';
+    h += '<td class="ra">' + c.qty + '</td>';
+    h += '<td class="ra">' + (c.intlTot?'NT$'+c.intlTot.toLocaleString():'-') + '</td>';
+    h += '<td class="ra" style="color:#c05621">' + (c.cost?'NT$'+c.cost.toLocaleString():'-') + '</td>';
+    h += '<td class="ra" style="color:'+(c.profit>=0?'#276749':'#e53e3e')+';font-weight:700">' + (c.rev?(c.profit>=0?'+':'')+' NT$'+c.profit.toLocaleString():'-') + '</td>';
+    h += '<td class="ra" style="color:'+(c.pctP>=0?'#276749':'#e53e3e')+';font-weight:700">' + (c.rev?c.pctP+'%':'-') + '</td>';
+    h += '</tr>';
   }
-  tb.innerHTML = html;
+  tb.innerHTML = h;
   rpTotals();
 }
 
 function exportCSV() {
   var month = document.getElementById('rpm').value;
-  var rows = getRPRows(month);
-  if (!rows.length) { showToast('本月無資料'); return; }
-  var hdr = ['商品名稱', 'JAN', '台幣售價NT$', '手續費%', '手續費NT$', '訂單總金額NT$', '日幣本體Y', '包材/運送Y', '日幣總額Y', '匯率', '台幣總價NT$', '紙箱費NT$', '營業稅NT$(1%)', '單件重kg', '外箱重kg', '單件總重kg', '每kg運費NT$', '單件運費NT$', '數量', '國際總運費NT$', '成本NT$', '毛利NT$', '毛利率%'];
-  var out = [hdr];
-  var s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0, sC = 0, sR = 0, sP = 0;
-  for (var i = 0; i < rows.length; i++) {
-    var rw = rows[i];
-    var c = calcRP(rw.it, rw.so, rw.soIt, rw.key);
-    var rd = c.rd;
-    out.push([rw.it.name, rw.it.jan || '', c.twd, c.feePct, c.feeAmt, c.ordTot, c.jpy,
-      rd.pack !== undefined ? rd.pack : '', c.jpyTot, rd.rate !== undefined ? rd.rate : '',
-      c.twdJpy || '', rd.boxFee !== undefined ? rd.boxFee : '', c.tax,
-      c.wIt, rd.wBox !== undefined ? rd.wBox : '', c.wTot,
-      rd.pkg !== undefined ? rd.pkg : 220, c.intlU, c.qty, c.intlTot, c.cost, c.profit, c.pctP]);
-    s0 += c.twd * c.qty; s1 += c.feeAmt * c.qty; s2 += c.twdJpy * c.qty;
-    s3 += c.qty; s4 += c.intlTot; sC += c.cost; sR += c.rev; sP += c.profit;
-  }
-  var sp = sR > 0 ? Math.round(sP / sR * 1000) / 10 : 0;
-  out.push(['合計', '', s0, '', s1, '', '', '', '', s2, '', '', '', '', '', '', '', '', s3, s4, sC, sP, sp]);
+  var rows = getRPRows(month); if (!rows.length) { showToast('本月無資料'); return; }
+  var hdr = ['商品名稱','JAN','台幣售價NT$','手續費%','手續費NT$','訂單總金額NT$','日幣本體Y','包材/運送Y','日幣總額Y','匯率','台幣總價NT$','紙箱費NT$','營業稅NT$(1%)','單件重kg','外箱重kg','單件總重kg','每kg運費NT$','單件運費NT$','數量','國際總運費NT$','成本NT$','毛利NT$','毛利率%'];
+  var out = [hdr]; var s0=0,s1=0,s2=0,s3=0,s4=0,sC=0,sR=0,sP=0;
+  for (var i = 0; i < rows.length; i++) { var rw=rows[i]; var c=calcRP(rw.it,rw.so,rw.soIt,rw.key); var rd=c.rd; out.push([rw.it.name,rw.it.jan||'',c.twd,c.feePct,c.feeAmt,c.ordTot,c.jpy,rd.pack!==undefined?rd.pack:'',c.jpyTot,rd.rate!==undefined?rd.rate:'',c.twdJpy||'',rd.boxFee!==undefined?rd.boxFee:'',c.tax,c.wIt,rd.wBox!==undefined?rd.wBox:'',c.wTot,rd.pkg!==undefined?rd.pkg:220,c.intlU,c.qty,c.intlTot,c.cost,c.profit,c.pctP]); s0+=c.twd*c.qty; s1+=c.feeAmt*c.qty; s2+=c.twdJpy*c.qty; s3+=c.qty; s4+=c.intlTot; sC+=c.cost; sR+=c.rev; sP+=c.profit; }
+  var sp = sR>0?Math.round(sP/sR*1000)/10:0;
+  out.push(['合計','',s0,'',s1,'','','','',s2,'','','','','','','','',s3,s4,sC,sP,sp]);
   var csv = '\uFEFF';
-  for (var ri = 0; ri < out.length; ri++) {
-    var rowArr = out[ri];
-    var cells = [];
-    for (var ci = 0; ci < rowArr.length; ci++) {
-      var v = String(rowArr[ci] === null || rowArr[ci] === undefined ? '' : rowArr[ci]);
-      if (v.indexOf(',') !== -1 || v.indexOf('"') !== -1 || v.indexOf('\n') !== -1) {
-        v = '"' + v.replace(/"/g, '""') + '"';
-      }
-      cells.push(v);
-    }
-    csv += cells.join(',') + '\r\n';
-  }
-  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = '代購報表_' + month + '.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('已匯出 CSV');
+  for (var ri = 0; ri < out.length; ri++) { var cells = []; for (var ci = 0; ci < out[ri].length; ci++) { var v = String(out[ri][ci]===null||out[ri][ci]===undefined?'':out[ri][ci]); if (v.indexOf(',')!==-1||v.indexOf('"')!==-1||v.indexOf('\n')!==-1) { v = '"'+v.replace(/"/g,'""')+'"'; } cells.push(v); } csv += cells.join(',') + '\r\n'; }
+  var blob = new Blob([csv],{type:'text/csv;charset=utf-8'}); var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href=url; a.download='代購報表_'+month+'.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); showToast('已匯出 CSV');
 }
 
-var GS_URL = 'https://script.google.com/macros/s/AKfycbwMAznFmMPgnIDiydT8j87JYMQ66L1OM_bQBjrqrld28kf1WduW6MYQzJwvrhqBEsvg/exec';
-var GS_ENABLED = true;
-var GS_SYNCING = false;
-
-function gsSave() {
-  if (!GS_ENABLED || GS_SYNCING) { return; }
-  GS_SYNCING = true;
-  setSyncStatus('syncing');
-  var data = JSON.stringify({ so: DB.so, po: DB.po, sg: DB.sg });
-  var params = 'action=write&data=' + encodeURIComponent(data);
-  fetch(GS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params
-  })
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      GS_SYNCING = false;
-      if (res.ok) { setSyncStatus('ok'); }
-      else { setSyncStatus('err'); showToast('雲端儲存失敗：' + res.message); }
-    })
-    .catch(function() {
-      GS_SYNCING = false;
-      setSyncStatus('err');
-      showToast('雲端連線失敗，資料已存本機');
-    });
-}
-
-function gsLoad() {
-  setSyncStatus('syncing');
-  fetch(GS_URL + '?action=read')
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (res.ok) {
-        if (res.so.length === 0 && res.po.length === 0 && res.sg.length === 0) {
-          setSyncStatus('ok');
-          showToast('雲端無資料，使用本機資料');
-          return;
-        }
-        DB.so = res.so;
-        DB.po = res.po;
-        DB.sg = res.sg;
-        persist();
-        initMonths();
-        drawDB();
-        setSyncStatus('ok');
-        showToast('已從 Google Sheets 載入資料');
-      } else {
-        setSyncStatus('err');
-        showToast('載入失敗：' + res.message);
-      }
-    })
-    .catch(function() {
-      setSyncStatus('err');
-      showToast('雲端連線失敗，使用本機資料');
-    });
-}
-
-function setSyncStatus(state) {
-  var el = document.getElementById('sync-status');
-  if (!el) { return; }
-  if (state === 'syncing') {
-    el.textContent = '⏳ 同步中...';
-    el.style.color = '#fbd38d';
-  } else if (state === 'ok') {
-    el.textContent = '✅ 已同步';
-    el.style.color = '#68d391';
-  } else {
-    el.textContent = '❌ 同步失敗';
-    el.style.color = '#fc8181';
-  }
-}
-  var data = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    so: DB.so,
-    po: DB.po,
-    sg: DB.sg
-  };
-  var json = JSON.stringify(data, null, 2);
-  var blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  var dateStr = new Date().toISOString().slice(0, 10);
-  a.href = url;
-  a.download = '代購管理備份_' + dateStr + '.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('已匯出備份檔案');
-}
-
-function importJSON(input) {
-  var file = input.files[0];
-  if (!file) { return; }
-  var reader = new FileReader();
-  reader.onload = function (e) {
-    try {
-      var data = JSON.parse(e.target.result);
-      if (!data.so || !data.po || !data.sg) {
-        showToast('檔案格式錯誤，請選擇正確的備份檔');
-        input.value = '';
-        return;
-      }
-      if (!confirm('確定要匯入？這將覆蓋目前所有資料，無法復原。')) {
-        input.value = '';
-        return;
-      }
-      DB.so = data.so;
-      DB.po = data.po;
-      DB.sg = data.sg;
-      persist();
-      initMonths();
-      drawDB();
-      input.value = '';
-      showToast('匯入成功！共 ' + DB.so.length + ' 筆SO、' + DB.po.length + ' 筆PO');
-    } catch (err) {
-      showToast('匯入失敗：檔案損毀或格式不符');
-      input.value = '';
-    }
-  };
-  reader.readAsText(file);
-}
-document.addEventListener('click', function (e) {
-  var pairs = [['trkq', 'trkdd'], ['rcq', 'rcdd']];
-  for (var pi = 0; pi < pairs.length; pi++) {
-    var a = pairs[pi][0], b = pairs[pi][1];
-    if (!e.target.closest('#' + a) && !e.target.closest('#' + b)) {
-      var d = document.getElementById(b);
-      if (d) { d.style.display = 'none'; }
-    }
-  }
+document.addEventListener('click', function(e) {
+  var pairs = [['trkq','trkdd'],['rcq','rcdd']];
+  for (var pi = 0; pi < pairs.length; pi++) { var a=pairs[pi][0], b=pairs[pi][1]; if (!e.target.closest('#'+a)&&!e.target.closest('#'+b)) { var d=document.getElementById(b); if(d){d.style.display='none';} } }
   var psdds = document.querySelectorAll('[id^="psd"]');
-  for (var di = 0; di < psdds.length; di++) {
-    var dd = psdds[di];
-    var idx = dd.id.slice(3);
-    if (!e.target.closest('#psi' + idx) && !e.target.closest('#psd' + idx)) {
-      dd.style.display = 'none';
-    }
-  }
+  for (var di = 0; di < psdds.length; di++) { var idx=psdds[di].id.slice(3); if (!e.target.closest('#psi'+idx)&&!e.target.closest('#psd'+idx)){psdds[di].style.display='none';} }
 });
 
-document.getElementById('pdate').textContent = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+document.querySelectorAll('.ov').forEach(function(el) {
+  el.addEventListener('click', function(e) { if (e.target === this) { closeM(this.id); } });
+});
+
+document.getElementById('pdate').textContent = new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'});
 
 loadDB();
 initMonths();
