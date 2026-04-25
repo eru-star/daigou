@@ -102,6 +102,7 @@ tr:hover td{background:#fafafa}
       <div id="sync-status" style="font-size:11px;margin-bottom:8px;color:#68d391">&#9729; 連線中...</div>
       <button class="btn bs" onclick="gsLoad()">&#9749; 從雲端載入</button>
       <button class="btn bp" onclick="gsSave()">&#9729; 儲存至雲端</button>
+      <button class="btn bo" style="font-size:10px" onclick="openM('mo-token')">&#128273; 設定 Token</button>
       <button class="btn bt" onclick="exportJSON()">&#128190; 匯出JSON備份</button>
       <label style="display:block">
         <span class="btn bw" style="width:100%;display:block;text-align:center;cursor:pointer">&#128228; 匯入JSON還原</span>
@@ -382,7 +383,16 @@ tr:hover td{background:#fafafa}
   </div>
 </div>
 
-<div class="ov" id="mo-pr">
+<div class="ov" id="mo-token">
+  <div class="md mdsm"><h2>&#128273; 設定存取 Token</h2>
+    <p style="font-size:12px;color:#718096;margin-bottom:12px">請輸入你在 Apps Script 設定的 Token，才能與 Google Sheets 同步。Token 會儲存在本機，下次不需要重新輸入。</p>
+    <div class="fg" style="margin-bottom:10px"><label>Token</label><input id="token-inp" type="password" placeholder="輸入你的 Token..."></div>
+    <div class="mf np">
+      <button class="btn bo" onclick="closeM('mo-token')">取消</button>
+      <button class="btn bp" onclick="saveToken()">確認</button>
+    </div>
+  </div>
+</div>
   <div class="md"><h2>出貨單</h2><div id="pr-b"></div>
     <div class="mf np">
       <button class="btn bo" onclick="closeM('mo-pr')">關閉</button>
@@ -396,7 +406,72 @@ tr:hover td{background:#fafafa}
 <script>
 var GS_URL = 'https://script.google.com/macros/s/AKfycbwMAznFmMPgnIDiydT8j87JYMQ66L1OM_bQBjrqrld28kf1WduW6MYQzJwvrhqBEsvg/exec';
 var GS_BUSY = false;
-var DB = { so: [], po: [], sg: [] };
+var GS_TOKEN = '';
+
+function getToken() {
+  if (GS_TOKEN) { return GS_TOKEN; }
+  var saved = '';
+  try { saved = localStorage.getItem('dg_token') || ''; } catch(e) {}
+  GS_TOKEN = saved;
+  return GS_TOKEN;
+}
+
+function setSyncStatus(state) {
+  var el = document.getElementById('sync-status');
+  if (!el) { return; }
+  if (state === 'syncing') { el.textContent = '⏳ 同步中...'; el.style.color = '#fbd38d'; }
+  else if (state === 'ok') { el.textContent = '✅ 已同步'; el.style.color = '#68d391'; }
+  else { el.textContent = '❌ 同步失敗'; el.style.color = '#fc8181'; }
+}
+
+function gsSave() {
+  if (GS_BUSY || !getToken()) { return; }
+  GS_BUSY = true;
+  setSyncStatus('syncing');
+  var payload = JSON.stringify({ so: DB.so, po: DB.po, sg: DB.sg });
+  var form = new FormData();
+  form.append('action', 'write');
+  form.append('token', getToken());
+  form.append('data', payload);
+  fetch(GS_URL, { method: 'POST', body: form })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      GS_BUSY = false;
+      setSyncStatus(res.ok ? 'ok' : 'err');
+      if (!res.ok) { showToast('雲端儲存失敗：' + (res.message||'')); }
+    })
+    .catch(function() { GS_BUSY = false; setSyncStatus('err'); showToast('雲端連線失敗，資料已存本機'); });
+}
+
+function gsLoad() {
+  if (!getToken()) { showToast('請先輸入 Token'); openM('mo-token'); return; }
+  setSyncStatus('syncing');
+  fetch(GS_URL + '?action=read&token=' + encodeURIComponent(getToken()))
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (!res.ok) {
+        setSyncStatus('err');
+        if (res.message === '驗證失敗') { showToast('Token 錯誤，請重新輸入'); openM('mo-token'); }
+        else { showToast('載入失敗：' + (res.message||'')); }
+        return;
+      }
+      if (!res.so.length && !res.po.length && !res.sg.length) { setSyncStatus('ok'); showToast('雲端無資料，使用本機資料'); return; }
+      DB.so = res.so; DB.po = res.po; DB.sg = res.sg;
+      try { localStorage.setItem('v10so', JSON.stringify(DB.so)); localStorage.setItem('v10po', JSON.stringify(DB.po)); localStorage.setItem('v10sg', JSON.stringify(DB.sg)); } catch(e) {}
+      initMonths(); drawDB(); setSyncStatus('ok'); showToast('已從 Google Sheets 載入資料');
+    })
+    .catch(function() { setSyncStatus('err'); showToast('雲端連線失敗，使用本機資料'); });
+}
+
+function saveToken() {
+  var t = (document.getElementById('token-inp').value || '').trim();
+  if (!t) { showToast('請輸入 Token'); return; }
+  GS_TOKEN = t;
+  try { localStorage.setItem('dg_token', t); } catch(e) {}
+  closeM('mo-token');
+  showToast('Token 已儲存，正在連線...');
+  gsLoad();
+}
 
 function loadDB() {
   function t(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch(e) { return []; } }
@@ -1331,7 +1406,7 @@ document.getElementById('pdate').textContent = new Date().toLocaleDateString('zh
 loadDB();
 initMonths();
 drawDB();
-gsLoad();
+if (getToken()) { gsLoad(); } else { openM('mo-token'); }
 </script>
 </body>
 </html>
