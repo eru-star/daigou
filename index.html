@@ -580,8 +580,8 @@ function goPage(p) {
 function openM(id) { document.getElementById(id).classList.add('on'); }
 function closeM(id) { document.getElementById(id).classList.remove('on'); }
 
-var SL = { wait:'待採購', ordered:'已採購', shipped:'已出貨', arrived:'已到貨', done:'已出貨給客戶', partial:'部分到貨' };
-var SC = { wait:'bwt', ordered:'bor', shipped:'bsh', arrived:'bar', done:'bdn', partial:'bpa' };
+var SL = { wait:'待採購', partial_order:'部分採購', ordered:'已採購', shipped:'已出貨', arrived:'已到貨', done:'已出貨給客戶', partial:'部分到貨' };
+var SC = { wait:'bwt', partial_order:'bpa', ordered:'bor', shipped:'bsh', arrived:'bar', done:'bdn', partial:'bpa' };
 function bdg(s) { return '<span class="bg ' + (SC[s]||'') + '">' + (SL[s]||H(s)) + '</span>'; }
 
 function chips(items) {
