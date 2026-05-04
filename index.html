@@ -284,9 +284,9 @@ tr:hover td{background:#fafafa}
       <div class="fg"><label>平台手續費 %（報表用）</label><input type="number" id="so-fp" placeholder="0" step="0.1"></div>
     </div>
     <div class="sdv">商品明細</div>
-    <div style="display:grid;grid-template-columns:2fr .8fr 1.1fr .7fr .9fr .9fr 28px;gap:4px;padding:0 4px;margin-bottom:3px">
+    <div style="display:grid;grid-template-columns:2fr .8fr 1.1fr .7fr .9fr 28px;gap:4px;padding:0 4px;margin-bottom:3px">
       <span class="ch">商品名稱</span><span class="ch">商品編號</span><span class="ch">JAN</span>
-      <span class="ch">數量</span><span class="ch">日幣Y</span><span class="ch">台幣NT$</span><span></span>
+      <span class="ch">數量</span><span class="ch">台幣NT$</span><span></span>
     </div>
     <div id="so-rows"></div>
     <div class="ab" onclick="soAddRow()">+ 新增商品行</div>
@@ -580,8 +580,8 @@ function goPage(p) {
 function openM(id) { document.getElementById(id).classList.add('on'); }
 function closeM(id) { document.getElementById(id).classList.remove('on'); }
 
-var SL = { wait:'待採購', partial_order:'部分採購', ordered:'已採購', shipped:'已出貨', arrived:'已到貨', done:'已出貨給客戶', partial:'部分到貨' };
-var SC = { wait:'bwt', partial_order:'bpa', ordered:'bor', shipped:'bsh', arrived:'bar', done:'bdn', partial:'bpa' };
+var SL = { wait:'待採購', ordered:'已採購', partial_po:'部分採購', shipped:'已出貨', arrived:'已到貨', done:'已出貨給客戶', partial:'部分到貨' };
+var SC = { wait:'bwt', ordered:'bor', partial_po:'bpa', shipped:'bsh', arrived:'bar', done:'bdn', partial:'bpa' };
 function bdg(s) { return '<span class="bg ' + (SC[s]||'') + '">' + (SL[s]||H(s)) + '</span>'; }
 
 function chips(items) {
@@ -601,6 +601,45 @@ function soChips(items) {
   var out = '';
   for (var j = 0; j < nos.length; j++) { out += '<span class="ck cy">' + H(nos[j]) + '</span>'; }
   return out || '-';
+}
+
+// 計算SO依品項比對PO的採購狀態: 'ordered'=全部採購, 'partial_po'=部分採購, 'wait'=待採購
+function getSoPurchaseStatus(so) {
+  if (!so || !so.items || !so.items.length) { return 'wait'; }
+  var total = so.items.length;
+  var purchasedCount = 0;
+  for (var i = 0; i < so.items.length; i++) {
+    var sit = so.items[i];
+    var found = false;
+    for (var pi = 0; pi < DB.po.length; pi++) {
+      var po = DB.po[pi];
+      for (var ii = 0; ii < (po.items||[]).length; ii++) {
+        var pit = po.items[ii];
+        if (pit.soNo === so.no && ((sit.jan && sit.jan === pit.jan) || sit.name === pit.name)) {
+          found = true; break;
+        }
+      }
+      if (found) { break; }
+    }
+    if (found) { purchasedCount++; }
+  }
+  if (purchasedCount === 0) { return 'wait'; }
+  if (purchasedCount === total) { return 'ordered'; }
+  return 'partial_po';
+}
+
+// 取得SO某品項是否已有對應PO
+function isItemPurchased(so, soItem) {
+  for (var pi = 0; pi < DB.po.length; pi++) {
+    var po = DB.po[pi];
+    for (var ii = 0; ii < (po.items||[]).length; ii++) {
+      var pit = po.items[ii];
+      if (pit.soNo === so.no && ((soItem.jan && soItem.jan === pit.jan) || soItem.name === pit.name)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function soTotal(s) {
@@ -624,12 +663,11 @@ function drawSORows() {
   var h = '';
   for (var i = 0; i < soRows.length; i++) {
     var r = soRows[i];
-    h += '<div style="display:grid;grid-template-columns:2fr .8fr 1.1fr .7fr .9fr .9fr 28px;gap:4px;align-items:center;margin-bottom:4px;padding:5px;background:#f7fafc;border-radius:5px">';
+    h += '<div style="display:grid;grid-template-columns:2fr .8fr 1.1fr .7fr .9fr 28px;gap:4px;align-items:center;margin-bottom:4px;padding:5px;background:#f7fafc;border-radius:5px">';
     h += '<input class="ri" value="' + H(r.name) + '" data-i="' + i + '" data-f="name" oninput="soRI(this)">';
     h += '<input class="ri" value="' + H(r.sku) + '" data-i="' + i + '" data-f="sku" oninput="soRI(this)">';
     h += '<input class="ri" value="' + H(r.jan) + '" data-i="' + i + '" data-f="jan" oninput="soRI(this)">';
     h += '<input class="ri" type="number" value="' + N(r.qty||1) + '" data-i="' + i + '" data-f="qty" oninput="soRN(this)">';
-    h += '<input class="ri" type="number" value="' + (r.jpy||'') + '" data-i="' + i + '" data-f="jpy" oninput="soRN(this)">';
     h += '<input class="ri" type="number" value="' + (r.twd||'') + '" data-i="' + i + '" data-f="twd" oninput="soRN(this)">';
     h += '<button class="btn bd bx" data-i="' + i + '" onclick="soDelRow(this)">X</button>';
     h += '</div>';
@@ -725,10 +763,12 @@ function viewSO(idx) {
   var rows = '';
   for (var i = 0; i < (s.items||[]).length; i++) {
     var it = s.items[i]; sub += N(it.twd)*N(it.qty||1);
+    var itBought = isItemPurchased(s, it);
     rows += '<tr><td>' + H(it.name) + '</td><td>' + H(it.sku||'-') + '</td><td>' + H(it.jan||'-') + '</td>';
-    rows += '<td>' + it.qty + '</td><td>' + (it.jpy?'Y'+N(it.jpy).toLocaleString():'-') + '</td>';
+    rows += '<td>' + it.qty + '</td>';
     rows += '<td>' + (it.twd?'NT$'+N(it.twd).toLocaleString():'-') + '</td>';
     rows += '<td>NT$' + (N(it.twd)*N(it.qty||1)).toLocaleString() + '</td>';
+    rows += '<td>' + (itBought ? '<span class="ck cg">已採購</span>' : '<span class="ck cr">未採購</span>') + '</td>';
     rows += '<td>' + (it.arrived?'<span class="ck cg">已到</span>':'<span class="ck cr">未到</span>') + '</td></tr>';
   }
   var h = '<div class="dg">';
@@ -741,7 +781,7 @@ function viewSO(idx) {
   if (s.dvTrk) { h += '<div class="kv"><span>超商單號</span><b>' + H(s.dvTrk) + '</b></div>'; }
   if (s.dvDt) { h += '<div class="kv"><span>出貨日期</span><b>' + H(s.dvDt) + '</b></div>'; }
   h += '</div>';
-  h += '<table style="margin-bottom:10px"><thead><tr><th>商品</th><th>SKU</th><th>JAN</th><th>數量</th><th>日幣</th><th>台幣</th><th>小計</th><th>到貨</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  h += '<table style="margin-bottom:10px"><thead><tr><th>商品</th><th>SKU</th><th>JAN</th><th>數量</th><th>台幣</th><th>小計</th><th>採購</th><th>到貨</th></tr></thead><tbody>' + rows + '</tbody></table>';
   h += '<div class="sm"><span>商品小計：NT$' + sub.toLocaleString() + '</span>';
   h += '<span>運費：NT$' + N(s.freight).toLocaleString() + '</span>';
   h += '<span style="font-weight:700;color:#276749">總計：NT$' + tot.toLocaleString() + '</span></div>';
@@ -758,19 +798,27 @@ function drawSO() {
     if (!match) { for (var x = 0; x < (s.items||[]).length; x++) { if (s.items[x].name.toLowerCase().indexOf(q)!==-1||(s.items[x].jan||'').indexOf(q)!==-1){match=true;break;} } }
     if (!match) { continue; }
     var fee = soFee(s); var tot = soTotal(s);
+    // 動態計算採購狀態（若尚未進入出貨/到貨/已出貨流程）
+    var displayStatus = s.status;
+    if (s.status === 'wait' || s.status === 'ordered' || s.status === 'partial_po') {
+      displayStatus = getSoPurchaseStatus(s);
+      if (s.status !== displayStatus) { s.status = displayStatus; }
+    }
     var det = '';
     for (var d = 0; d < (s.items||[]).length; d++) {
       var it2 = s.items[d];
+      var itPurchased = isItemPurchased(s, it2);
       det += '<div style="padding:2px 0;border-bottom:1px solid #f0f4f8;font-size:11px"><b>' + H(it2.name) + '</b>';
       if (it2.jan) { det += ' <span style="color:#718096">' + H(it2.jan) + '</span>'; }
-      det += ' x' + it2.qty + ' ' + (it2.arrived?'<span class="ck cg">已到</span>':'<span class="ck cr">未到</span>') + '</div>';
+      det += ' x' + it2.qty + ' ' + (itPurchased ? '<span class="ck cg">已採購</span>' : '<span class="ck cr">未採購</span>');
+      det += (it2.arrived?'<span class="ck cg" style="margin-left:2px">已到</span>':'') + '</div>';
     }
     h += '<tr><td><b class="lk" data-i="' + a + '" onclick="viewSO(+this.dataset.i)">' + H(s.no) + '</b><br><span style="font-size:10px;color:#718096">' + H(s.date||'') + '</span></td>';
     h += '<td>' + det + '</td>';
     h += '<td>NT$' + N(s.freight).toLocaleString() + '</td>';
     h += '<td>NT$' + fee.toLocaleString() + '<br><span style="font-size:10px;color:#718096">(' + (s.feePct||0) + '%)</span></td>';
     h += '<td style="font-weight:700">NT$' + tot.toLocaleString() + '</td>';
-    h += '<td>' + bdg(s.status) + '</td>';
+    h += '<td>' + bdg(displayStatus) + '</td>';
     h += '<td style="font-size:11px">' + H(s.note||'') + '</td>';
     h += '<td style="white-space:nowrap">';
     h += '<button class="btn bi bx" style="display:block;margin-bottom:2px" data-i="' + a + '" onclick="viewSO(+this.dataset.i)">詳情</button>';
@@ -887,7 +935,7 @@ function savePO() {
   var prev = (poIdx >= 0) ? DB.po[poIdx] : {};
   var obj = { no:no, vendor:document.getElementById('po-vn').value, url:document.getElementById('po-ul').value, note:document.getElementById('po-nt').value, items:JSON.parse(JSON.stringify(poRows)), status:(prev&&prev.status)?prev.status:'ordered', trackNo:(prev&&prev.trackNo)?prev.trackNo:'', carrier:(prev&&prev.carrier)?prev.carrier:'', sgNo:(prev&&prev.sgNo)?prev.sgNo:'', shipDt:(prev&&prev.shipDt)?prev.shipDt:'', shipNote:(prev&&prev.shipNote)?prev.shipNote:'' };
   if (poIdx >= 0) { DB.po[poIdx] = obj; } else { DB.po.push(obj); }
-  for (var i = 0; i < poRows.length; i++) { if (poRows[i].soNo) { for (var j = 0; j < DB.so.length; j++) { if (DB.so[j].no===poRows[i].soNo&&DB.so[j].status==='wait'){DB.so[j].status='ordered';} } } }
+  for (var i = 0; i < poRows.length; i++) { if (poRows[i].soNo) { for (var j = 0; j < DB.so.length; j++) { if (DB.so[j].no===poRows[i].soNo && (DB.so[j].status==='wait'||DB.so[j].status==='ordered'||DB.so[j].status==='partial_po')){DB.so[j].status=getSoPurchaseStatus(DB.so[j]);} } } }
   persist(); closeM('mo-po'); drawPO(); showToast(poIdx >= 0 ? '已更新' : '已新增');
 }
 
