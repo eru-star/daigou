@@ -310,6 +310,7 @@ tr:hover td{background:#fafafa}
     <h2 id="po-tt">新增採購訂單</h2>
     <div class="f2" style="margin-bottom:10px">
       <div class="fg"><label>採購單號</label><input id="po-no"></div>
+      <div class="fg"><label>下單日期</label><input type="date" id="po-dt"></div>
       <div class="fg"><label>採購廠商</label>
         <select id="po-vn"><option value="">選擇廠商...</option>
           <option>駿河屋</option><option>アニメイト</option><option>アマゾン</option><option>neowing</option>
@@ -868,6 +869,7 @@ function viewPO(idx) {
   }
   var h = '<div class="dg">';
   h += '<div class="kv"><span>採購單號</span><b>' + H(p.no) + '</b></div>';
+  h += '<div class="kv"><span>下單日期</span><b>' + H(p.date||'-') + '</b></div>';
   h += '<div class="kv"><span>廠商</span>' + (p.vendor?'<span class="ck cp">'+H(p.vendor)+'</span>':'-') + '</div>';
   h += '<div class="kv"><span>狀態</span>' + bdg(p.status) + '</div>';
   h += '<div class="kv"><span>網址</span>' + (p.url?'<a href="'+H(p.url)+'" target="_blank" class="lk">開啟</a>':'-') + '</div>';
@@ -902,7 +904,7 @@ function drawPO() {
     var match = !q || p.no.toLowerCase().indexOf(q)!==-1 || (p.vendor||'').toLowerCase().indexOf(q)!==-1;
     if (!match) { for (var x = 0; x < (p.items||[]).length; x++) { if (p.items[x].name.toLowerCase().indexOf(q)!==-1||(p.items[x].jan||'').indexOf(q)!==-1||(p.items[x].soNo||'').toLowerCase().indexOf(q)!==-1){match=true;break;} } }
     if (!match) { continue; }
-    h += '<tr><td><b>' + H(p.no) + '</b></td>';
+    h += '<tr><td><b>' + H(p.no) + '</b><br><span style="font-size:10px;color:#718096">' + H(p.date||'') + '</span></td>';
     h += '<td>' + (p.vendor?'<span class="ck cp">'+H(p.vendor)+'</span>':'-') + '</td>';
     h += '<td>' + soChips(p.items) + '</td><td>' + chips(p.items) + '</td>';
     h += '<td>' + bdg(p.status) + '</td>';
@@ -921,6 +923,7 @@ function openPO(idx) {
   var d = (poIdx >= 0) ? DB.po[poIdx] : null;
   document.getElementById('po-tt').textContent = d ? '編輯採購訂單' : '新增採購訂單';
   document.getElementById('po-no').value = d ? d.no : uid('PO');
+  document.getElementById('po-dt').value = d ? (d.date||'') : new Date().toISOString().slice(0,10);
   document.getElementById('po-vn').value = d ? (d.vendor||'') : '';
   document.getElementById('po-ul').value = d ? (d.url||'') : '';
   document.getElementById('po-nt').value = d ? (d.note||'') : '';
@@ -933,7 +936,7 @@ function savePO() {
   if (!no) { showToast('請填寫採購單號'); return; }
   if (!poRows.length || !poRows[0].name) { showToast('請至少新增一項商品'); return; }
   var prev = (poIdx >= 0) ? DB.po[poIdx] : {};
-  var obj = { no:no, vendor:document.getElementById('po-vn').value, url:document.getElementById('po-ul').value, note:document.getElementById('po-nt').value, items:JSON.parse(JSON.stringify(poRows)), status:(prev&&prev.status)?prev.status:'ordered', trackNo:(prev&&prev.trackNo)?prev.trackNo:'', carrier:(prev&&prev.carrier)?prev.carrier:'', sgNo:(prev&&prev.sgNo)?prev.sgNo:'', shipDt:(prev&&prev.shipDt)?prev.shipDt:'', shipNote:(prev&&prev.shipNote)?prev.shipNote:'' };
+  var obj = { no:no, date:document.getElementById('po-dt').value, vendor:document.getElementById('po-vn').value, url:document.getElementById('po-ul').value, note:document.getElementById('po-nt').value, items:JSON.parse(JSON.stringify(poRows)), status:(prev&&prev.status)?prev.status:'ordered', trackNo:(prev&&prev.trackNo)?prev.trackNo:'', carrier:(prev&&prev.carrier)?prev.carrier:'', sgNo:(prev&&prev.sgNo)?prev.sgNo:'', shipDt:(prev&&prev.shipDt)?prev.shipDt:'', shipNote:(prev&&prev.shipNote)?prev.shipNote:'' };
   if (poIdx >= 0) { DB.po[poIdx] = obj; } else { DB.po.push(obj); }
   for (var i = 0; i < poRows.length; i++) { if (poRows[i].soNo) { for (var j = 0; j < DB.so.length; j++) { if (DB.so[j].no===poRows[i].soNo && (DB.so[j].status==='wait'||DB.so[j].status==='ordered'||DB.so[j].status==='partial_po')){DB.so[j].status=getSoPurchaseStatus(DB.so[j]);} } } }
   persist(); closeM('mo-po'); drawPO(); showToast(poIdx >= 0 ? '已更新' : '已新增');
