@@ -309,8 +309,22 @@ tr:hover td{background:#fafafa}
   <div class="md">
     <h2 id="po-tt">新增採購訂單</h2>
     <div class="f2" style="margin-bottom:10px">
-      <div class="fg"><label>採購單號</label><input id="po-no"></div>
+      <div class="fg"><label>採購單號</label><input id="po-no" oninput="checkPODup(this)">
+        <div id="po-dup-warn" style="display:none;color:#e53e3e;font-size:11px;margin-top:2px">⚠️ 此採購單號已存在！</div>
+      </div>
       <div class="fg"><label>下單日期</label><input type="date" id="po-dt"></div>
+      <div class="fg"><label>發售年份</label>
+        <input type="number" id="po-ry" placeholder="例：2026" min="2020" style="width:100%;padding:6px 8px;border:1px solid #cbd5e0;border-radius:5px;font-size:12px;outline:none">
+      </div>
+      <div class="fg"><label>發售月份</label>
+        <select id="po-rm" style="width:100%;padding:6px 8px;border:1px solid #cbd5e0;border-radius:5px;font-size:12px">
+          <option value="">-- 月 --</option>
+          <option value="01">1月</option><option value="02">2月</option><option value="03">3月</option>
+          <option value="04">4月</option><option value="05">5月</option><option value="06">6月</option>
+          <option value="07">7月</option><option value="08">8月</option><option value="09">9月</option>
+          <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+        </select>
+      </div>
       <div class="fg"><label>採購廠商</label>
         <select id="po-vn"><option value="">選擇廠商...</option>
           <option>駿河屋</option><option>アニメイト</option><option>アマゾン</option><option>neowing</option>
@@ -319,15 +333,23 @@ tr:hover td{background:#fafafa}
           <option>1999</option><option>メルカリ</option><option>其他</option>
         </select>
       </div>
+      <div class="fg"><label>一鍵帶入 SO 未採購品</label>
+        <div style="display:flex;gap:5px">
+          <select id="po-so-pick" style="flex:1;padding:6px 8px;border:1px solid #cbd5e0;border-radius:5px;font-size:12px">
+            <option value="">選擇 SO...</option>
+          </select>
+          <button class="btn bs bx" onclick="poImportSO()">帶入</button>
+        </div>
+      </div>
       <div class="fg" style="grid-column:1/-1"><label>採購網址</label><input id="po-ul"></div>
       <div class="fg" style="grid-column:1/-1"><label>備註</label>
         <textarea id="po-nt" rows="2" style="width:100%;padding:6px 8px;border:1px solid #cbd5e0;border-radius:5px;font-size:12px;outline:none;resize:vertical"></textarea>
       </div>
     </div>
     <div class="sdv">採購商品明細</div>
-    <div style="display:grid;grid-template-columns:2fr .8fr 1.1fr .7fr 1fr 1.3fr 28px;gap:4px;padding:0 4px;margin-bottom:3px">
+    <div style="display:grid;grid-template-columns:2fr .8fr 1.1fr .7fr .8fr .7fr 1.3fr 28px;gap:4px;padding:0 4px;margin-bottom:3px">
       <span class="ch">商品名稱</span><span class="ch">商品編號</span><span class="ch">JAN</span>
-      <span class="ch">數量</span><span class="ch">日幣Y</span><span class="ch">對應SO</span><span></span>
+      <span class="ch">採購數</span><span class="ch">日幣Y</span><span class="ch" style="color:#e53e3e">尚缺</span><span class="ch">對應SO</span><span></span>
     </div>
     <div id="po-rows"></div>
     <div class="ab" onclick="poAddRow()">+ 新增商品行</div>
@@ -689,12 +711,17 @@ function drawPORows() {
   var h = '';
   for (var i = 0; i < poRows.length; i++) {
     var r = poRows[i];
-    h += '<div style="display:grid;grid-template-columns:2fr .8fr 1.1fr .7fr 1fr 1.3fr 28px;gap:4px;align-items:center;margin-bottom:4px;padding:5px;background:#f7fafc;border-radius:5px">';
+    // 計算尚缺數量：SO需求 - 已在其他PO採購的數量 - 本行採購數
+    var shortage = calcShortage(r, i);
+    var shortageColor = shortage > 0 ? '#e53e3e' : shortage === 0 && r.soNo ? '#276749' : '#a0aec0';
+    var shortageText = r.soNo ? (shortage > 0 ? '-'+shortage : '✓') : '-';
+    h += '<div style="display:grid;grid-template-columns:2fr .8fr 1.1fr .7fr .8fr .7fr 1.3fr 28px;gap:4px;align-items:center;margin-bottom:4px;padding:5px;background:#f7fafc;border-radius:5px">';
     h += '<input class="ri" value="' + H(r.name) + '" data-i="' + i + '" data-f="name" oninput="poRI(this)">';
     h += '<input class="ri" value="' + H(r.sku) + '" data-i="' + i + '" data-f="sku" oninput="poRI(this)">';
     h += '<input class="ri" value="' + H(r.jan) + '" data-i="' + i + '" data-f="jan" oninput="poRI(this)">';
-    h += '<input class="ri" type="number" value="' + N(r.qty||1) + '" data-i="' + i + '" data-f="qty" oninput="poRN(this)">';
+    h += '<input class="ri" type="number" min="1" value="' + N(r.qty||1) + '" data-i="' + i + '" data-f="qty" oninput="poRN(this);drawPORows()">';
     h += '<input class="ri" type="number" value="' + (r.jpy||'') + '" data-i="' + i + '" data-f="jpy" oninput="poRN(this)">';
+    h += '<div style="text-align:center;font-size:12px;font-weight:700;color:'+shortageColor+'">'+shortageText+'</div>';
     h += '<div class="dp"><input class="ri" id="psi' + i + '" value="' + H(r.soNo) + '" data-i="' + i + '" placeholder="搜尋SO..." oninput="poSOSrch(this)" autocomplete="off"><div class="dd" id="psd' + i + '" style="display:none"></div></div>';
     h += '<button class="btn bd bx" data-i="' + i + '" onclick="poDelRow(this)">X</button>';
     h += '</div>';
@@ -705,6 +732,98 @@ function drawPORows() {
 function poRI(el) { poRows[+el.dataset.i][el.dataset.f] = el.value; }
 function poRN(el) { poRows[+el.dataset.i][el.dataset.f] = N(el.value); }
 function poDelRow(el) { poRows.splice(+el.dataset.i, 1); drawPORows(); }
+
+// 計算某行品項的尚缺數量（SO需求 - 已在所有已存PO中採購的數 - 本次輸入數）
+function calcShortage(row, rowIdx) {
+  if (!row.soNo || !row.name) { return 0; }
+  // 找SO中對應品項需求數量
+  var soQty = 0;
+  for (var si = 0; si < DB.so.length; si++) {
+    if (DB.so[si].no !== row.soNo) { continue; }
+    for (var ii = 0; ii < (DB.so[si].items||[]).length; ii++) {
+      var sit = DB.so[si].items[ii];
+      if ((row.jan && sit.jan && row.jan === sit.jan) || sit.name === row.name) {
+        soQty += N(sit.qty||1); break;
+      }
+    }
+    break;
+  }
+  if (!soQty) { return 0; }
+  // 已在DB的PO中採購數（排除當前編輯的PO）
+  var alreadyPO = 0;
+  for (var pi = 0; pi < DB.po.length; pi++) {
+    if (poIdx >= 0 && DB.po[pi].no === DB.po[poIdx].no) { continue; } // 跳過自己
+    for (var pii = 0; pii < (DB.po[pi].items||[]).length; pii++) {
+      var pit = DB.po[pi].items[pii];
+      if (pit.soNo !== row.soNo) { continue; }
+      if ((row.jan && pit.jan && row.jan === pit.jan) || pit.name === row.name) {
+        alreadyPO += N(pit.qty||1);
+      }
+    }
+  }
+  // 本次表單中其他行的採購數
+  var thisFormQty = 0;
+  for (var ri = 0; ri < poRows.length; ri++) {
+    if (ri === rowIdx) { continue; }
+    var pr = poRows[ri];
+    if (pr.soNo !== row.soNo) { continue; }
+    if ((row.jan && pr.jan && row.jan === pr.jan) || pr.name === row.name) {
+      thisFormQty += N(pr.qty||1);
+    }
+  }
+  var shortage = soQty - alreadyPO - thisFormQty - N(row.qty||1);
+  return shortage < 0 ? 0 : shortage;
+}
+
+// 防呆：檢查採購單號是否已存在
+function checkPODup(el) {
+  var val = el.value.trim();
+  var warn = document.getElementById('po-dup-warn');
+  var exists = false;
+  for (var i = 0; i < DB.po.length; i++) {
+    if (DB.po[i].no === val && (poIdx < 0 || DB.po[i].no !== (DB.po[poIdx]||{}).no || i !== poIdx)) {
+      exists = true; break;
+    }
+  }
+  warn.style.display = exists ? 'block' : 'none';
+}
+
+// 一鍵帶入指定SO的未採購品
+function poImportSO() {
+  var sel = document.getElementById('po-so-pick');
+  var soNo = sel.value;
+  if (!soNo) { showToast('請先選擇 SO'); return; }
+  var so = null;
+  for (var si = 0; si < DB.so.length; si++) { if (DB.so[si].no === soNo) { so = DB.so[si]; break; } }
+  if (!so) { showToast('找不到此 SO'); return; }
+  var added = 0;
+  for (var ii = 0; ii < (so.items||[]).length; ii++) {
+    var sit = so.items[ii];
+    // 計算此品項在其他PO已採購的總數（含本表單現有行）
+    var alreadyPO = 0;
+    for (var pi = 0; pi < DB.po.length; pi++) {
+      if (poIdx >= 0 && DB.po[pi].no === DB.po[poIdx].no) { continue; }
+      for (var pii = 0; pii < (DB.po[pi].items||[]).length; pii++) {
+        var pit = DB.po[pi].items[pii];
+        if (pit.soNo !== soNo) { continue; }
+        if ((sit.jan && pit.jan && sit.jan === pit.jan) || sit.name === pit.name) { alreadyPO += N(pit.qty||1); }
+      }
+    }
+    var inForm = 0;
+    for (var ri = 0; ri < poRows.length; ri++) {
+      var pr = poRows[ri];
+      if (pr.soNo !== soNo) { continue; }
+      if ((sit.jan && pr.jan && sit.jan === pr.jan) || sit.name === pr.name) { inForm += N(pr.qty||1); }
+    }
+    var need = N(sit.qty||1) - alreadyPO - inForm;
+    if (need <= 0) { continue; }
+    poRows.push({ name: sit.name, sku: sit.sku||'', jan: sit.jan||'', qty: need, jpy: 0, soNo: soNo, arrived: false, weight: '' });
+    added++;
+  }
+  if (!added) { showToast('此 SO 所有品項已全數採購，無需帶入'); return; }
+  drawPORows();
+  showToast('已帶入 ' + added + ' 項未採購品');
+}
 
 function poSOSrch(el) {
   var i = +el.dataset.i; poRows[i].soNo = el.value;
@@ -870,6 +989,9 @@ function viewPO(idx) {
   var h = '<div class="dg">';
   h += '<div class="kv"><span>採購單號</span><b>' + H(p.no) + '</b></div>';
   h += '<div class="kv"><span>下單日期</span><b>' + H(p.date||'-') + '</b></div>';
+  if (p.releaseYear || p.releaseMonth) {
+    h += '<div class="kv"><span>發售年月</span><b>' + (p.releaseYear||'?') + '年 ' + (p.releaseMonth ? p.releaseMonth+'月' : '?月') + '</b></div>';
+  }
   h += '<div class="kv"><span>廠商</span>' + (p.vendor?'<span class="ck cp">'+H(p.vendor)+'</span>':'-') + '</div>';
   h += '<div class="kv"><span>狀態</span>' + bdg(p.status) + '</div>';
   h += '<div class="kv"><span>網址</span>' + (p.url?'<a href="'+H(p.url)+'" target="_blank" class="lk">開啟</a>':'-') + '</div>';
@@ -885,11 +1007,33 @@ function viewPO(idx) {
 
 function showUnrcv() {
   var list = [];
-  for (var i = 0; i < DB.po.length; i++) { for (var j = 0; j < (DB.po[i].items||[]).length; j++) { if (!DB.po[i].items[j].arrived) { list.push({po:DB.po[i].no,vendor:DB.po[i].vendor,name:DB.po[i].items[j].name,jan:DB.po[i].items[j].jan,qty:DB.po[i].items[j].qty,soNo:DB.po[i].items[j].soNo,status:DB.po[i].status}); } } }
+  for (var i = 0; i < DB.po.length; i++) {
+    var po = DB.po[i];
+    for (var j = 0; j < (po.items||[]).length; j++) {
+      if (!po.items[j].arrived) {
+        list.push({ po:po.no, vendor:po.vendor, releaseYear:po.releaseYear||'', releaseMonth:po.releaseMonth||'', name:po.items[j].name, jan:po.items[j].jan, qty:po.items[j].qty, soNo:po.items[j].soNo, status:po.status });
+      }
+    }
+  }
+  // 依發售年月排序（有的排前面，無的排後）
+  list.sort(function(a,b) {
+    var ya = (a.releaseYear||'9999')+'/'+(a.releaseMonth||'99');
+    var yb = (b.releaseYear||'9999')+'/'+(b.releaseMonth||'99');
+    return ya < yb ? -1 : ya > yb ? 1 : 0;
+  });
   var h = '';
   if (list.length) {
-    h = '<table><thead><tr><th>採購單號</th><th>廠商</th><th>商品名稱</th><th>JAN</th><th>數量</th><th>對應SO</th><th>狀態</th></tr></thead><tbody>';
-    for (var k = 0; k < list.length; k++) { h += '<tr><td>' + H(list[k].po) + '</td><td>' + (list[k].vendor?'<span class="ck cp">'+H(list[k].vendor)+'</span>':'-') + '</td><td>' + H(list[k].name) + '</td><td>' + H(list[k].jan||'-') + '</td><td>' + list[k].qty + '</td><td>' + (list[k].soNo?'<span class="ck cy">'+H(list[k].soNo)+'</span>':'-') + '</td><td>' + bdg(list[k].status) + '</td></tr>'; }
+    h = '<table><thead><tr><th>採購單號</th><th>廠商</th><th>發售年月</th><th>商品名稱</th><th>JAN</th><th>數量</th><th>對應SO</th><th>狀態</th></tr></thead><tbody>';
+    for (var k = 0; k < list.length; k++) {
+      var relStr = (list[k].releaseYear||list[k].releaseMonth) ? ((list[k].releaseYear||'?')+'/'+(list[k].releaseMonth||'?')) : '-';
+      var relStyle = (list[k].releaseYear||list[k].releaseMonth) ? 'font-weight:600;color:#805ad5' : 'color:#a0aec0';
+      h += '<tr><td>' + H(list[k].po) + '</td>';
+      h += '<td>' + (list[k].vendor?'<span class="ck cp">'+H(list[k].vendor)+'</span>':'-') + '</td>';
+      h += '<td style="'+relStyle+'">'+relStr+'</td>';
+      h += '<td>' + H(list[k].name) + '</td><td>' + H(list[k].jan||'-') + '</td><td>' + list[k].qty + '</td>';
+      h += '<td>' + (list[k].soNo?'<span class="ck cy">'+H(list[k].soNo)+'</span>':'-') + '</td>';
+      h += '<td>' + bdg(list[k].status) + '</td></tr>';
+    }
     h += '</tbody></table>';
   } else { h = '<div style="text-align:center;color:#a0aec0;padding:20px">所有商品均已到貨！</div>'; }
   document.getElementById('urcv-b').innerHTML = h;
@@ -904,7 +1048,8 @@ function drawPO() {
     var match = !q || p.no.toLowerCase().indexOf(q)!==-1 || (p.vendor||'').toLowerCase().indexOf(q)!==-1;
     if (!match) { for (var x = 0; x < (p.items||[]).length; x++) { if (p.items[x].name.toLowerCase().indexOf(q)!==-1||(p.items[x].jan||'').indexOf(q)!==-1||(p.items[x].soNo||'').toLowerCase().indexOf(q)!==-1){match=true;break;} } }
     if (!match) { continue; }
-    h += '<tr><td><b>' + H(p.no) + '</b><br><span style="font-size:10px;color:#718096">' + H(p.date||'') + '</span></td>';
+    var relDate = (p.releaseYear||p.releaseMonth) ? ((p.releaseYear||'?')+'/'+(p.releaseMonth||'?')) : '';
+    h += '<tr><td><b>' + H(p.no) + '</b><br><span style="font-size:10px;color:#718096">' + H(p.date||'') + (relDate ? ' <span style="color:#805ad5">發售:'+relDate+'</span>' : '') + '</span></td>';
     h += '<td>' + (p.vendor?'<span class="ck cp">'+H(p.vendor)+'</span>':'-') + '</td>';
     h += '<td>' + soChips(p.items) + '</td><td>' + chips(p.items) + '</td>';
     h += '<td>' + bdg(p.status) + '</td>';
@@ -923,10 +1068,22 @@ function openPO(idx) {
   var d = (poIdx >= 0) ? DB.po[poIdx] : null;
   document.getElementById('po-tt').textContent = d ? '編輯採購訂單' : '新增採購訂單';
   document.getElementById('po-no').value = d ? d.no : uid('PO');
+  document.getElementById('po-dup-warn').style.display = 'none';
   document.getElementById('po-dt').value = d ? (d.date||'') : new Date().toISOString().slice(0,10);
+  document.getElementById('po-ry').value = d ? (d.releaseYear||'') : '';
+  document.getElementById('po-rm').value = d ? (d.releaseMonth||'') : '';
   document.getElementById('po-vn').value = d ? (d.vendor||'') : '';
   document.getElementById('po-ul').value = d ? (d.url||'') : '';
   document.getElementById('po-nt').value = d ? (d.note||'') : '';
+  // 填充 SO 下拉（只顯示有未採購品的 SO）
+  var soSel = document.getElementById('po-so-pick');
+  var soOpts = '<option value="">選擇 SO...</option>';
+  for (var si = 0; si < DB.so.length; si++) {
+    var so = DB.so[si];
+    if (so.status === 'done') { continue; }
+    soOpts += '<option value="' + H(so.no) + '">' + H(so.no) + (so.date?' ('+so.date+')':'') + '</option>';
+  }
+  soSel.innerHTML = soOpts;
   poRows = d ? JSON.parse(JSON.stringify(d.items||[])) : [{name:'',sku:'',jan:'',qty:1,jpy:0,soNo:'',arrived:false,weight:''}];
   drawPORows(); openM('mo-po');
 }
@@ -936,7 +1093,7 @@ function savePO() {
   if (!no) { showToast('請填寫採購單號'); return; }
   if (!poRows.length || !poRows[0].name) { showToast('請至少新增一項商品'); return; }
   var prev = (poIdx >= 0) ? DB.po[poIdx] : {};
-  var obj = { no:no, date:document.getElementById('po-dt').value, vendor:document.getElementById('po-vn').value, url:document.getElementById('po-ul').value, note:document.getElementById('po-nt').value, items:JSON.parse(JSON.stringify(poRows)), status:(prev&&prev.status)?prev.status:'ordered', trackNo:(prev&&prev.trackNo)?prev.trackNo:'', carrier:(prev&&prev.carrier)?prev.carrier:'', sgNo:(prev&&prev.sgNo)?prev.sgNo:'', shipDt:(prev&&prev.shipDt)?prev.shipDt:'', shipNote:(prev&&prev.shipNote)?prev.shipNote:'' };
+  var obj = { no:no, date:document.getElementById('po-dt').value, releaseYear:document.getElementById('po-ry').value, releaseMonth:document.getElementById('po-rm').value, vendor:document.getElementById('po-vn').value, url:document.getElementById('po-ul').value, note:document.getElementById('po-nt').value, items:JSON.parse(JSON.stringify(poRows)), status:(prev&&prev.status)?prev.status:'ordered', trackNo:(prev&&prev.trackNo)?prev.trackNo:'', carrier:(prev&&prev.carrier)?prev.carrier:'', sgNo:(prev&&prev.sgNo)?prev.sgNo:'', shipDt:(prev&&prev.shipDt)?prev.shipDt:'', shipNote:(prev&&prev.shipNote)?prev.shipNote:'' };
   if (poIdx >= 0) { DB.po[poIdx] = obj; } else { DB.po.push(obj); }
   for (var i = 0; i < poRows.length; i++) { if (poRows[i].soNo) { for (var j = 0; j < DB.so.length; j++) { if (DB.so[j].no===poRows[i].soNo && (DB.so[j].status==='wait'||DB.so[j].status==='ordered'||DB.so[j].status==='partial_po')){DB.so[j].status=getSoPurchaseStatus(DB.so[j]);} } } }
   persist(); closeM('mo-po'); drawPO(); showToast(poIdx >= 0 ? '已更新' : '已新增');
