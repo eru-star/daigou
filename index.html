@@ -1075,12 +1075,16 @@ function openPO(idx) {
   document.getElementById('po-vn').value = d ? (d.vendor||'') : '';
   document.getElementById('po-ul').value = d ? (d.url||'') : '';
   document.getElementById('po-nt').value = d ? (d.note||'') : '';
-  // 填充 SO 下拉（只顯示有未採購品的 SO）
+  // 填充 SO 下拉（只顯示有未採購品的 SO：待採購或部分採購）
   var soSel = document.getElementById('po-so-pick');
   var soOpts = '<option value="">選擇 SO...</option>';
   for (var si = 0; si < DB.so.length; si++) {
     var so = DB.so[si];
-    if (so.status === 'done') { continue; }
+    // 用即時計算的採購狀態過濾，只保留待採購或部分採購
+    var ps = getSoPurchaseStatus(so);
+    if (ps === 'ordered') { continue; }
+    // 同時排除已出貨/已到貨/已出貨給客戶等後段狀態
+    if (so.status === 'done' || so.status === 'shipped' || so.status === 'arrived') { continue; }
     soOpts += '<option value="' + H(so.no) + '">' + H(so.no) + (so.date?' ('+so.date+')':'') + '</option>';
   }
   soSel.innerHTML = soOpts;
