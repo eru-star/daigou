@@ -1288,9 +1288,10 @@ function buildRC(pos,title) {
     if(po.trackNo){h+=' <span style="font-size:11px;color:#4a5568;margin-left:6px">'+H(po.carrier||'')+' '+H(po.trackNo)+'</span>';}
     h+=' <button class="btn bw bx np" data-pi="'+poDBIdx+'" onclick="openSE(+this.dataset.pi)" style="margin-left:8px">修正寄件</button></div>';
     h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">';
-    h+='<span style="font-size:11px;color:#4a5568;font-weight:600;white-space:nowrap">📦 日本倉庫入庫時間：</span>';
-    h+='<input type="datetime-local" style="padding:3px 6px;border:1px solid #'+(po.warehouseArrivedAt?'9ae6b4':'cbd5e0')+';border-radius:4px;font-size:11px;background:'+(po.warehouseArrivedAt?'#f0fff4':'#fff')+'" value="'+H(po.warehouseArrivedAt||'')+'" data-pi="'+poDBIdx+'" onchange="rcWHArrive(this)">';
-    if(po.warehouseArrivedAt){h+='<span style="font-size:11px;color:#276749;font-weight:600">✅ 已入庫</span>';}
+    h+='<span style="font-size:11px;color:#4a5568;font-weight:600;white-space:nowrap">📦 日本倉庫入庫日期：</span>';
+    h+='<input type="date" id="wha'+poDBIdx+'" style="padding:3px 6px;border:1px solid #'+(po.warehouseArrivedAt?'9ae6b4':'cbd5e0')+';border-radius:4px;font-size:11px;background:'+(po.warehouseArrivedAt?'#f0fff4':'#fff')+'" value="'+H(po.warehouseArrivedAt||'')+'">';
+    h+='<button class="btn bs bx" style="font-size:11px;padding:3px 10px" onclick="rcWHArrive('+poDBIdx+')">儲存入庫日</button>';
+    h+='<span id="whs'+poDBIdx+'" style="font-size:11px;color:#276749;font-weight:600">'+(po.warehouseArrivedAt?'✅ '+H(po.warehouseArrivedAt):'')+'</span>';
     h+='</div>';
     for(var ii=0;ii<(po.items||[]).length;ii++){
       var it=po.items[ii]; var done=!!it.arrived;
@@ -1324,16 +1325,18 @@ function rcChk(el){
 
 function rcWt(el){var po=DB.po[+el.dataset.pi];if(po&&po.items[+el.dataset.ii]){po.items[+el.dataset.ii].weight=el.value;persist();}}
 function rcNt(el){var po=DB.po[+el.dataset.pi];if(po&&po.items[+el.dataset.ii]){po.items[+el.dataset.ii].rcNote=el.value;persist();}}
-function rcWHArrive(el){
-  var po=DB.po[+el.dataset.pi]; if(!po){return;}
-  po.warehouseArrivedAt=el.value;
+function rcWHArrive(pi){
+  var po=DB.po[pi]; if(!po){return;}
+  var inp=document.getElementById('wha'+pi);
+  var badge=document.getElementById('whs'+pi);
+  if(!inp){return;}
+  var val=inp.value;
+  po.warehouseArrivedAt=val;
+  inp.style.borderColor=val?'#9ae6b4':'#cbd5e0';
+  inp.style.background=val?'#f0fff4':'#fff';
+  if(badge){badge.textContent=val?'✅ '+val:'';}
   persist();
-  // 更新樣式即時反映
-  el.style.borderColor=el.value?'#9ae6b4':'#cbd5e0';
-  el.style.background=el.value?'#f0fff4':'#fff';
-  var badge=el.nextElementSibling;
-  if(el.value){if(!badge||badge.tagName!=='SPAN'){var sp=document.createElement('span');sp.style.cssText='font-size:11px;color:#276749;font-weight:600';sp.textContent='✅ 已入庫';el.parentNode.insertBefore(sp,el.nextSibling);}
-  }else{if(badge&&badge.tagName==='SPAN'){badge.remove();}}
+  showToast(val?'入庫日期已儲存：'+val:'已清除入庫日期');
 }
 
 function rcConfirm(){
