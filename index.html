@@ -996,6 +996,7 @@ function viewPO(idx) {
   h += '<div class="kv"><span>狀態</span>' + bdg(p.status) + '</div>';
   h += '<div class="kv"><span>網址</span>' + (p.url?'<a href="'+H(p.url)+'" target="_blank" class="lk">開啟</a>':'-') + '</div>';
   if (p.trackNo) { h += '<div class="kv"><span>物流商</span><b>' + H(p.carrier||'-') + '</b></div><div class="kv"><span>寄件單號</span><b>' + H(p.trackNo) + '</b></div>'; }
+  if (p.warehouseArrivedAt) { h += '<div class="kv"><span>日本倉庫入庫</span><b style="color:#276749">✅ ' + H(p.warehouseArrivedAt.replace('T',' ')) + '</b></div>'; }
   if (p.shipDt) { h += '<div class="kv"><span>出貨日期</span><b>' + H(p.shipDt) + '</b></div>'; }
   if (p.sgNo) { h += '<div class="kv"><span>倉庫總單</span><b>' + H(p.sgNo) + '</b></div>'; }
   h += '</div>';
@@ -1286,6 +1287,11 @@ function buildRC(pos,title) {
     if(po.vendor){h+=' <span class="ck cp">'+H(po.vendor)+'</span>';}
     if(po.trackNo){h+=' <span style="font-size:11px;color:#4a5568;margin-left:6px">'+H(po.carrier||'')+' '+H(po.trackNo)+'</span>';}
     h+=' <button class="btn bw bx np" data-pi="'+poDBIdx+'" onclick="openSE(+this.dataset.pi)" style="margin-left:8px">修正寄件</button></div>';
+    h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">';
+    h+='<span style="font-size:11px;color:#4a5568;font-weight:600;white-space:nowrap">📦 日本倉庫入庫時間：</span>';
+    h+='<input type="datetime-local" style="padding:3px 6px;border:1px solid #'+(po.warehouseArrivedAt?'9ae6b4':'cbd5e0')+';border-radius:4px;font-size:11px;background:'+(po.warehouseArrivedAt?'#f0fff4':'#fff')+'" value="'+H(po.warehouseArrivedAt||'')+'" data-pi="'+poDBIdx+'" onchange="rcWHArrive(this)">';
+    if(po.warehouseArrivedAt){h+='<span style="font-size:11px;color:#276749;font-weight:600">✅ 已入庫</span>';}
+    h+='</div>';
     for(var ii=0;ii<(po.items||[]).length;ii++){
       var it=po.items[ii]; var done=!!it.arrived;
       h+='<div class="rv'+(done?' done':'')+'" id="rv'+poDBIdx+'x'+ii+'">';
@@ -1318,6 +1324,17 @@ function rcChk(el){
 
 function rcWt(el){var po=DB.po[+el.dataset.pi];if(po&&po.items[+el.dataset.ii]){po.items[+el.dataset.ii].weight=el.value;persist();}}
 function rcNt(el){var po=DB.po[+el.dataset.pi];if(po&&po.items[+el.dataset.ii]){po.items[+el.dataset.ii].rcNote=el.value;persist();}}
+function rcWHArrive(el){
+  var po=DB.po[+el.dataset.pi]; if(!po){return;}
+  po.warehouseArrivedAt=el.value;
+  persist();
+  // 更新樣式即時反映
+  el.style.borderColor=el.value?'#9ae6b4':'#cbd5e0';
+  el.style.background=el.value?'#f0fff4':'#fff';
+  var badge=el.nextElementSibling;
+  if(el.value){if(!badge||badge.tagName!=='SPAN'){var sp=document.createElement('span');sp.style.cssText='font-size:11px;color:#276749;font-weight:600';sp.textContent='✅ 已入庫';el.parentNode.insertBefore(sp,el.nextSibling);}
+  }else{if(badge&&badge.tagName==='SPAN'){badge.remove();}}
+}
 
 function rcConfirm(){
   for(var ni=0;ni<rcNos.length;ni++){
