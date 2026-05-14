@@ -23,6 +23,7 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:#2d3748;font-siz
 .sl{font-size:11px;color:#718096;margin-bottom:2px}.sv{font-size:21px;font-weight:700}
 .panel{background:#fff;border-radius:9px;padding:13px;margin-bottom:13px}
 .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;flex-wrap:wrap;gap:7px}
+.sticky-top{position:sticky;top:-14px;z-index:100;background:#fff;margin:0 -13px;padding:11px 13px 8px;border-bottom:1px solid #e2e8f0;margin-bottom:10px;border-radius:9px 9px 0 0}
 .pt{font-size:14px;font-weight:700}
 .btn{padding:5px 12px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap}
 .btn:hover{opacity:.82}
@@ -50,7 +51,8 @@ tr:hover td{background:#fafafa}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .mf{display:flex;justify-content:flex-end;gap:7px;margin-top:13px;padding-top:13px;border-top:1px solid #e2e8f0}
 .sdv{font-size:11px;font-weight:700;color:#4a5568;margin:11px 0 5px;padding-bottom:3px;border-bottom:1px solid #e2e8f0}
-.sb{display:flex;gap:7px;margin-bottom:11px}
+table thead th{position:sticky;top:0;background:#f7fafc;z-index:90;box-shadow:0 1px 0 #e2e8f0}
+.sb{display:flex;gap:7px;margin-bottom:0}
 .sb input{flex:1;padding:6px 10px;border:1px solid #cbd5e0;border-radius:5px;font-size:12px;outline:none}
 .ri{padding:4px 6px;border:1px solid #cbd5e0;border-radius:5px;font-size:12px;outline:none;width:100%}
 .ri:focus{border-color:#3182ce}
@@ -136,16 +138,18 @@ tr:hover td{background:#fafafa}
       </div>
 
       <div class="pg" id="pg-so">
-        <div class="panel">
+        <div class="panel" style="margin-bottom:0;border-radius:9px 9px 0 0;position:sticky;top:-14px;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.08)">
           <div class="ph"><div class="pt">銷售訂單</div><button class="btn bp" onclick="openSO(-1)">+ 新增</button></div>
           <div class="sb"><input id="soq" placeholder="搜尋..." oninput="drawSO()"></div>
+        </div>
+        <div class="panel" style="border-radius:0 0 9px 9px;padding-top:0">
           <table><thead><tr><th>訂單編號/日期</th><th>商品明細</th><th>運費</th><th>手續費</th><th>總金額</th><th>狀態</th><th>備註</th><th>操作</th></tr></thead>
           <tbody id="sotb"></tbody></table>
         </div>
       </div>
 
       <div class="pg" id="pg-po">
-        <div class="panel">
+        <div class="panel" style="margin-bottom:0;border-radius:9px 9px 0 0;position:sticky;top:-14px;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.08)">
           <div class="ph"><div class="pt">採購訂單</div>
             <div style="display:flex;gap:7px">
               <button class="btn bw" onclick="showUnrcv()">查詢未到貨</button>
@@ -153,6 +157,8 @@ tr:hover td{background:#fafafa}
             </div>
           </div>
           <div class="sb"><input id="poq" placeholder="搜尋採購單號/廠商/商品名稱/JAN/對應SO..." oninput="drawPO()"></div>
+        </div>
+        <div class="panel" style="border-radius:0 0 9px 9px;padding-top:0">
           <table><thead><tr><th>採購單號</th><th>廠商</th><th>對應SO</th><th>商品明細</th><th>狀態</th><th>寄件單號</th><th>操作</th></tr></thead>
           <tbody id="potb"></tbody></table>
         </div>
@@ -279,7 +285,9 @@ tr:hover td{background:#fafafa}
     <h2 id="so-tt">新增銷售訂單</h2>
     <div class="f2" style="margin-bottom:10px">
       <div class="fg"><label>訂單日期</label><input type="date" id="so-dt"></div>
-      <div class="fg"><label>訂單編號</label><input id="so-no"></div>
+      <div class="fg"><label>訂單編號</label><input id="so-no" oninput="checkSODup(this)">
+        <div id="so-dup-warn" style="display:none;color:#e53e3e;font-size:11px;margin-top:2px">⚠️ 此訂單編號已存在！</div>
+      </div>
       <div class="fg"><label>運費 NT$</label><input type="number" id="so-fr" placeholder="0"></div>
       <div class="fg"><label>平台手續費 %（報表用）</label><input type="number" id="so-fp" placeholder="0" step="0.1"></div>
     </div>
@@ -776,6 +784,17 @@ function calcShortage(row, rowIdx) {
 }
 
 // 防呆：檢查採購單號是否已存在
+function checkSODup(el) {
+  var val = el.value.trim();
+  var warn = document.getElementById('so-dup-warn');
+  var exists = false;
+  for (var i = 0; i < DB.so.length; i++) {
+    if (DB.so[i].no === val && i !== soIdx) { exists = true; break; }
+  }
+  warn.style.display = exists ? 'block' : 'none';
+  el.style.borderColor = exists ? '#e53e3e' : '';
+}
+
 function checkPODup(el) {
   var val = el.value.trim();
   var warn = document.getElementById('po-dup-warn');
@@ -955,6 +974,8 @@ function openSO(idx) {
   document.getElementById('so-tt').textContent = d ? '編輯銷售訂單' : '新增銷售訂單';
   document.getElementById('so-dt').value = d ? (d.date||'') : new Date().toISOString().slice(0,10);
   document.getElementById('so-no').value = d ? d.no : uid('SO');
+  document.getElementById('so-dup-warn').style.display = 'none';
+  document.getElementById('so-no').style.borderColor = '';
   document.getElementById('so-nt').value = d ? (d.note||'') : '';
   document.getElementById('so-fr').value = d ? (d.freight||'') : '';
   document.getElementById('so-fp').value = d ? (d.feePct||'') : '';
@@ -965,6 +986,10 @@ function openSO(idx) {
 function saveSO() {
   var no = document.getElementById('so-no').value.trim();
   if (!no) { showToast('請填寫訂單編號'); return; }
+  // 防呆：檢查是否重複（編輯時允許自身）
+  for (var ci = 0; ci < DB.so.length; ci++) {
+    if (DB.so[ci].no === no && ci !== soIdx) { showToast('⚠️ 訂單編號已存在，請修改後再儲存'); document.getElementById('so-no').focus(); return; }
+  }
   if (!soRows.length || !soRows[0].name) { showToast('請至少新增一項商品'); return; }
   var prev = (soIdx >= 0) ? DB.so[soIdx] : {};
   var obj = { no:no, date:document.getElementById('so-dt').value, freight:N(document.getElementById('so-fr').value), feePct:N(document.getElementById('so-fp').value), items:JSON.parse(JSON.stringify(soRows)), note:document.getElementById('so-nt').value, status:(prev&&prev.status)?prev.status:'wait', dvTrk:(prev&&prev.dvTrk)?prev.dvTrk:'', dvDt:(prev&&prev.dvDt)?prev.dvDt:'' };
@@ -1010,6 +1035,7 @@ function showUnrcv() {
   var list = [];
   for (var i = 0; i < DB.po.length; i++) {
     var po = DB.po[i];
+    if (po.status === 'shipped' || po.status === 'arrived' || po.status === 'done') { continue; }
     for (var j = 0; j < (po.items||[]).length; j++) {
       if (!po.items[j].arrived) {
         list.push({ po:po.no, vendor:po.vendor, releaseYear:po.releaseYear||'', releaseMonth:po.releaseMonth||'', name:po.items[j].name, jan:po.items[j].jan, qty:po.items[j].qty, soNo:po.items[j].soNo, status:po.status });
