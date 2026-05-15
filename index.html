@@ -90,12 +90,61 @@ table thead th{position:sticky;top:0;background:#f7fafc;z-index:90;box-shadow:0 
 </style>
 </head>
 <body>
+
+<!-- 密碼鎖畫面 -->
+<div id="lockscreen" style="position:fixed;inset:0;background:#1a202c;z-index:99999;display:flex;align-items:center;justify-content:center">
+  <div style="background:#2d3748;border-radius:14px;padding:40px 36px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.5);text-align:center">
+    <div style="font-size:36px;margin-bottom:10px">🔐</div>
+    <div style="color:#e2e8f0;font-size:20px;font-weight:700;margin-bottom:6px">代購管理系統</div>
+    <div style="color:#718096;font-size:12px;margin-bottom:24px">請輸入密碼以繼續</div>
+    <input id="lock-pw" type="password" placeholder="密碼"
+      style="width:100%;padding:10px 14px;border-radius:7px;border:2px solid #4a5568;background:#1a202c;color:#e2e8f0;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:10px;text-align:center;letter-spacing:3px"
+      onkeydown="if(event.key==='Enter')unlock()">
+    <div id="lock-err" style="color:#fc8181;font-size:12px;margin-bottom:10px;display:none">❌ 密碼錯誤</div>
+    <button onclick="unlock()" style="width:100%;padding:10px;background:#4299e1;color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer">進入系統</button>
+  </div>
+</div>
+
+<script>
+// ── 密碼設定區 ──────────────────────────────────────
+// 修改方式：將你的密碼輸入下方網址，取得 SHA-256 後貼上
+// https://emn178.github.io/online-tools/sha256.html
+var LOCK_HASH = '1e07e5b7d541ad356b840b83fb10859d0408b790f6e724e7a7498f5fee386714'; // ← 貼上你的密碼 SHA-256 雜湊值（小寫hex）
+// ────────────────────────────────────────────────────
+
+// 若 LOCK_HASH 尚未設定，用第一次輸入的密碼當作初始密碼
+async function unlock() {
+  var pw = document.getElementById('lock-pw').value;
+  if (!pw) { return; }
+  var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  var hash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  // 若還沒設定雜湊，第一次輸入就設定並儲存
+  if (!LOCK_HASH) {
+    try { var stored = localStorage.getItem('dg_lock_hash'); if (stored) { LOCK_HASH = stored; } } catch(e) {}
+  }
+  if (!LOCK_HASH) {
+    // 初次設定：把這次輸入的密碼雜湊存起來
+    try { localStorage.setItem('dg_lock_hash', hash); } catch(e) {}
+    LOCK_HASH = hash;
+  }
+  if (hash === LOCK_HASH) {
+    document.getElementById('lockscreen').style.display = 'none';
+    document.getElementById('lock-pw').value = '';
+  } else {
+    document.getElementById('lock-err').style.display = 'block';
+    document.getElementById('lock-pw').value = '';
+    document.getElementById('lock-pw').focus();
+    setTimeout(function(){ document.getElementById('lock-err').style.display='none'; }, 2500);
+  }
+}
+</script>
 <div class="app">
   <div class="sidebar">
     <div class="logo">&#128722; <span>代購</span>管理</div>
     <div class="nv on" onclick="goPage('db')">&#128202; 總覽</div>
     <div class="nv" onclick="goPage('so')">&#128203; 銷售訂單 SO</div>
     <div class="nv" onclick="goPage('po')">&#128717; 採購訂單 PO</div>
+    <div class="nv" onclick="goPage('ur')">&#128270; 未到貨查詢</div>
     <div class="nv" onclick="goPage('sh')">&#9992; 日本出貨</div>
     <div class="nv" onclick="goPage('rc')">&#128230; 入庫驗收</div>
     <div class="nv" onclick="goPage('dv')">&#128666; 出貨銷貨</div>
@@ -152,7 +201,6 @@ table thead th{position:sticky;top:0;background:#f7fafc;z-index:90;box-shadow:0 
         <div class="panel" style="margin-bottom:0;border-radius:9px 9px 0 0;position:sticky;top:-14px;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.08)">
           <div class="ph"><div class="pt">採購訂單</div>
             <div style="display:flex;gap:7px">
-              <button class="btn bw" onclick="showUnrcv()">查詢未到貨</button>
               <button class="btn bp" onclick="openPO(-1)">+ 新增</button>
             </div>
           </div>
@@ -161,6 +209,17 @@ table thead th{position:sticky;top:0;background:#f7fafc;z-index:90;box-shadow:0 
         <div class="panel" style="border-radius:0 0 9px 9px;padding-top:0">
           <table><thead><tr><th>採購單號</th><th>廠商</th><th>對應SO</th><th>商品明細</th><th>狀態</th><th>寄件單號</th><th>操作</th></tr></thead>
           <tbody id="potb"></tbody></table>
+        </div>
+      </div>
+
+      <div class="pg" id="pg-ur">
+        <div class="panel" style="margin-bottom:0;border-radius:9px 9px 0 0;position:sticky;top:-14px;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.08)">
+          <div class="ph"><div class="pt">未到貨查詢</div></div>
+          <div class="sb"><input id="urq" placeholder="搜尋採購單號/廠商/商品名稱/JAN/對應SO..." oninput="drawUR()"></div>
+        </div>
+        <div class="panel" style="border-radius:0 0 9px 9px;padding-top:0">
+          <table><thead><tr><th>採購單號/日期</th><th>廠商</th><th>發售年月</th><th>對應SO</th><th>商品明細</th><th>狀態</th><th>操作</th></tr></thead>
+          <tbody id="urtb"></tbody></table>
         </div>
       </div>
 
@@ -374,11 +433,7 @@ table thead th{position:sticky;top:0;background:#f7fafc;z-index:90;box-shadow:0 
   </div>
 </div>
 
-<div class="ov" id="mo-urcv">
-  <div class="md"><h2>全部未到貨商品</h2><div id="urcv-b"></div>
-    <div class="mf np"><button class="btn bo" onclick="closeM('mo-urcv')">關閉</button></div>
-  </div>
-</div>
+
 
 <div class="ov" id="mo-sg">
   <div class="md mdsm"><h2 id="sg-tt">新增倉庫總單</h2>
@@ -590,7 +645,7 @@ function importJSON(input) {
   reader.readAsText(file);
 }
 
-var PAGE_TITLES = { db:'總覽', so:'銷售訂單 SO', po:'採購訂單 PO', sh:'日本出貨', rc:'入庫驗收', dv:'出貨銷貨', rp:'月營收報表' };
+var PAGE_TITLES = { db:'總覽', so:'銷售訂單 SO', po:'採購訂單 PO', ur:'未到貨查詢', sh:'日本出貨', rc:'入庫驗收', dv:'出貨銷貨', rp:'月營收報表' };
 
 function goPage(p) {
   var pgs = document.querySelectorAll('.pg');
@@ -604,7 +659,7 @@ function goPage(p) {
     if ((nvs[k].getAttribute('onclick') || '').indexOf(target) !== -1) { nvs[k].classList.add('on'); }
   }
   document.getElementById('ptitle').textContent = PAGE_TITLES[p] || '';
-  var fns = { db:drawDB, so:drawSO, po:drawPO, sh:drawSH, rc:drawRC, dv:drawDV, rp:drawRP };
+  var fns = { db:drawDB, so:drawSO, po:drawPO, ur:drawUR, sh:drawSH, rc:drawRC, dv:drawDV, rp:drawRP };
   if (fns[p]) { fns[p](); }
 }
 
@@ -1067,6 +1122,48 @@ function showUnrcv() {
   openM('mo-urcv');
 }
 
+function drawUR() {
+  var q = (document.getElementById('urq').value || '').toLowerCase();
+  var h = '';
+  for (var a = 0; a < DB.po.length; a++) {
+    var p = DB.po[a];
+    // 只顯示已採購（非已出貨/到貨/完成）
+    if (p.status === 'shipped' || p.status === 'arrived' || p.status === 'done') { continue; }
+    // 必須有未到貨品項
+    var unrcvItems = (p.items||[]).filter(function(it){ return !it.arrived; });
+    if (!unrcvItems.length) { continue; }
+    // 搜尋過濾
+    var match = !q || p.no.toLowerCase().indexOf(q)!==-1 || (p.vendor||'').toLowerCase().indexOf(q)!==-1;
+    if (!match) { for (var x = 0; x < unrcvItems.length; x++) { if ((unrcvItems[x].name||'').toLowerCase().indexOf(q)!==-1||(unrcvItems[x].jan||'').indexOf(q)!==-1||(unrcvItems[x].soNo||'').toLowerCase().indexOf(q)!==-1){match=true;break;} } }
+    if (!match) { continue; }
+    var relDate = (p.releaseYear||p.releaseMonth) ? ((p.releaseYear||'?')+'/'+(p.releaseMonth||'?')) : '-';
+    var relStyle = (p.releaseYear||p.releaseMonth) ? 'font-weight:600;color:#805ad5' : 'color:#a0aec0';
+    // 商品明細（只顯示未到貨的）
+    var det = '';
+    for (var d = 0; d < unrcvItems.length; d++) {
+      var it = unrcvItems[d];
+      det += '<div style="padding:2px 0;border-bottom:1px solid #f0f4f8;font-size:11px"><b>'+H(it.name)+'</b>';
+      if (it.jan) { det += ' <span style="color:#718096">'+H(it.jan)+'</span>'; }
+      det += ' x'+it.qty+'</div>';
+    }
+    h += '<tr>';
+    h += '<td><b class="lk" data-i="'+a+'" onclick="viewPO(+this.dataset.i)">'+H(p.no)+'</b><br><span style="font-size:10px;color:#718096">'+H(p.date||'')+'</span></td>';
+    h += '<td>'+(p.vendor?'<span class="ck cp">'+H(p.vendor)+'</span>':'-')+'</td>';
+    h += '<td style="'+relStyle+'">'+relStr(p)+'</td>';
+    h += '<td>'+soChips(p.items)+'</td>';
+    h += '<td>'+det+'</td>';
+    h += '<td>'+bdg(p.status)+'</td>';
+    h += '<td style="white-space:nowrap">';
+    h += '<button class="btn bi bx" style="display:block;margin-bottom:2px" data-i="'+a+'" onclick="viewPO(+this.dataset.i)">詳情</button>';
+    h += '<button class="btn bw bx" style="display:block" data-i="'+a+'" onclick="openPO(+this.dataset.i)">編輯</button>';
+    h += '</td></tr>';
+  }
+  document.getElementById('urtb').innerHTML = h || '<tr><td colspan="7" style="text-align:center;color:#a0aec0;padding:18px">目前無未到貨商品 🎉</td></tr>';
+}
+
+function relStr(p) {
+  return (p.releaseYear||p.releaseMonth) ? ((p.releaseYear||'?')+'/'+(p.releaseMonth||'?')) : '-';
+}
 function drawPO() {
   var q = (document.getElementById('poq').value || '').toLowerCase();
   var h = '';
