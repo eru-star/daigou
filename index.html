@@ -509,7 +509,7 @@ async function unlock() {
 var GS_URL = (function(){
   // GAS URL 以 XOR 加密存放，避免直接暴露在原始碼
   // 若要更換網址：執行 encodeURL('你的新網址') 取得新的加密字串貼入 _e
-  var _e = '0f1b0e1f5a424954091e574c091c1f520c1a1d5e424b44090c1818571b5a4c0c5e1b085e5740094408091c4c1a0c571a4444090e1b1b091c4c5a5709040c5e09090e5a440957181c5742570c1c5a1b4c0e0c';
+  var _e = '0c151d171c4f1d1f4155010c13064b130b0e0e0b0a5b515f5f191e0400000a074b12462624134b5350413e24191c231929310e0926315b4956624b0f5b452f2d29305f5123447d7d6d5422270900140608055b5f04130367564324532e2b340e2e161f15070470754140144a060a0017';
   var _k = 'daigou2026secret';
   var r = '';
   for(var i=0;i<_e.length;i+=2){
@@ -538,14 +538,15 @@ function auditLog(action, detail) {
     detail: detail || ''
   };
   AUDIT_LOG.push(entry);
-  // 只保留最近 200 筆
   if (AUDIT_LOG.length > 200) { AUDIT_LOG.shift(); }
   try { localStorage.setItem('dg_audit', JSON.stringify(AUDIT_LOG)); } catch(e) {}
-  // 同步寫入 Google Sheets LOG sheet
+  // LOG 同步至 GAS（背景執行，不影響主要同步）
   if (getToken()) {
-    var payload = JSON.stringify({ log: [entry] });
-    var body = 'action=log&token='+encodeURIComponent(getToken())+'&data='+encodeURIComponent(payload);
-    fetch(GS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body }).catch(function(){});
+    setTimeout(function() {
+      var payload = JSON.stringify({ log: [entry] });
+      var body = 'action=log&token='+encodeURIComponent(getToken())+'&data='+encodeURIComponent(payload);
+      fetch(GS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body }).catch(function(){});
+    }, 3000); // 延遲 3 秒，避免與主要同步衝突
   }
 }
 
@@ -645,13 +646,15 @@ function gsSave() {
   if (GS_BUSY || !getToken()) { return; }
   GS_BUSY = true;
   setSyncStatus('syncing');
+  // 15秒後自動解鎖，避免卡死
+  var busyTimer = setTimeout(function() { GS_BUSY = false; setSyncStatus('err'); }, 15000);
   var payload = JSON.stringify({ so: DB.so, po: DB.po, sg: DB.sg });
   gsPost(
     { action: 'write', token: getToken(), data: payload },
-    function() { GS_BUSY = false; setSyncStatus('ok'); },
+    function() { clearTimeout(busyTimer); GS_BUSY = false; setSyncStatus('ok'); },
     function(msg) {
-      GS_BUSY = false; setSyncStatus('err');
-      if (msg === '驗證失敗') { showToast('Token 錯誤'); }
+      clearTimeout(busyTimer); GS_BUSY = false; setSyncStatus('err');
+      if (msg === '驗證失敗') { showToast('Token 錯誤，請重新設定'); }
       else { showToast('儲存失敗：' + msg); }
     }
   );
