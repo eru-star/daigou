@@ -109,7 +109,7 @@ table thead th{position:sticky;top:0;background:#f7fafc;z-index:90;box-shadow:0 
 // ── 密碼設定區 ──────────────────────────────────────
 // 修改方式：將你的密碼輸入下方網址，取得 SHA-256 後貼上
 // https://emn178.github.io/online-tools/sha256.html
-var LOCK_HASH = '1e07e5b7d541ad356b840b83fb10859d0408b790f6e724e7a7498f5fee386714'; // ← 貼上你的密碼 SHA-256 雜湊值（小寫hex）
+var LOCK_HASH = ''; // ← 貼上你的密碼 SHA-256 雜湊值（小寫hex）
 // ────────────────────────────────────────────────────
 
 // 若 LOCK_HASH 尚未設定，用第一次輸入的密碼當作初始密碼
@@ -153,6 +153,7 @@ async function unlock() {
       <div id="sync-status" style="font-size:11px;margin-bottom:8px;color:#a0aec0">尚未連線</div>
       <button class="btn bs" onclick="gsLoad()">從雲端載入</button>
       <button class="btn bp" onclick="gsSave()">儲存至雲端</button>
+      <button class="btn bw" onclick="showAuditLog()">📋 操作紀錄</button>
       <button class="btn bo" onclick="openM('mo-token')">&#128273; 設定 Token</button>
       <button class="btn bt" onclick="exportJSON()">&#128190; 匯出備份</button>
       <label style="display:block">
@@ -189,7 +190,12 @@ async function unlock() {
       <div class="pg" id="pg-so">
         <div class="panel" style="margin-bottom:0;border-radius:9px 9px 0 0;position:sticky;top:-14px;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.08)">
           <div class="ph"><div class="pt">銷售訂單</div><button class="btn bp" onclick="openSO(-1)">+ 新增</button></div>
-          <div class="sb"><input id="soq" placeholder="搜尋..." oninput="drawSO()"></div>
+          <div class="sb"><input id="soq" placeholder="搜尋訂單編號/商品名稱/JAN..." oninput="drawSO()"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+            <button id="sof-all" class="btn bp bx" style="font-size:11px;padding:3px 10px" onclick="soSetFilter('all')">全部</button>
+            <button id="sof-wait" class="btn bw bx" style="font-size:11px;padding:3px 10px" onclick="soSetFilter('wait')">🟡 待採購</button>
+            <button id="sof-partial" class="btn bw bx" style="font-size:11px;padding:3px 10px" onclick="soSetFilter('partial_po')">🟠 部分採購</button>
+          </div>
         </div>
         <div class="panel" style="border-radius:0 0 9px 9px;padding-top:0">
           <table><thead><tr><th>訂單編號/日期</th><th>商品明細</th><th>運費</th><th>手續費</th><th>總金額</th><th>狀態</th><th>備註</th><th>操作</th></tr></thead>
@@ -490,10 +496,29 @@ async function unlock() {
   </div>
 </div>
 
+<div class="ov" id="mo-audit">
+  <div class="md"><h2>📋 操作紀錄</h2>
+    <div id="audit-b" style="max-height:60vh;overflow-y:auto"></div>
+    <div class="mf np"><button class="btn bo" onclick="closeM('mo-audit')">關閉</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-var GS_URL = 'https://script.google.com/macros/s/AKfycbwMAznFmMPgnIDiydT8j87JYMQ66L1OM_bQBjrqrld28kf1WduW6MYQzJwvrhqBEsvg/exec';
+var GS_URL = (function(){
+  // GAS URL 以 XOR 加密存放，避免直接暴露在原始碼
+  // 若要更換網址：執行 encodeURL('你的新網址') 取得新的加密字串貼入 _e
+  var _e = '0f1b0e1f5a424954091e574c091c1f520c1a1d5e424b44090c1818571b5a4c0c5e1b085e5740094408091c4c1a0c571a4444090e1b1b091c4c5a5709040c5e09090e5a440957181c5742570c1c5a1b4c0e0c';
+  var _k = 'daigou2026secret';
+  var r = '';
+  for(var i=0;i<_e.length;i+=2){
+    r+=String.fromCharCode(parseInt(_e.substr(i,2),16)^_k.charCodeAt((i/2)%_k.length));
+  }
+  return r;
+})();
+// 開發工具：encodeURL('新網址') 可產生新的加密字串
+function encodeURL(url){var k='daigou2026secret';var r='';for(var i=0;i<url.length;i++){var b=(url.charCodeAt(i)^k.charCodeAt(i%k.length)).toString(16).padStart(2,'0');r+=b;}console.log('加密後：'+r);return r;}
 var GS_BUSY = false;
 var GS_TOKEN = '';
 var DB = { so: [], po: [], sg: [] };
@@ -504,9 +529,48 @@ var poRows = [], poIdx = -1;
 var trkPI = -1, sgEI = -1, sePI = -1, dvEI = -1;
 var rpData = {}, rpRows = [];
 
+var AUDIT_LOG = [];
+
+function auditLog(action, detail) {
+  var entry = {
+    ts: new Date().toISOString().replace('T',' ').slice(0,19),
+    action: action,
+    detail: detail || ''
+  };
+  AUDIT_LOG.push(entry);
+  // 只保留最近 200 筆
+  if (AUDIT_LOG.length > 200) { AUDIT_LOG.shift(); }
+  try { localStorage.setItem('dg_audit', JSON.stringify(AUDIT_LOG)); } catch(e) {}
+  // 同步寫入 Google Sheets LOG sheet
+  if (getToken()) {
+    var payload = JSON.stringify({ log: [entry] });
+    var body = 'action=log&token='+encodeURIComponent(getToken())+'&data='+encodeURIComponent(payload);
+    fetch(GS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body }).catch(function(){});
+  }
+}
+
+function loadAuditLog() {
+  try { AUDIT_LOG = JSON.parse(localStorage.getItem('dg_audit') || '[]'); } catch(e) { AUDIT_LOG = []; }
+}
+
+function showAuditLog() {
+  var h = '<table><thead><tr><th>時間</th><th>操作</th><th>詳細</th></tr></thead><tbody>';
+  var log = AUDIT_LOG.slice().reverse();
+  for (var i = 0; i < log.length; i++) {
+    h += '<tr><td style="white-space:nowrap;font-size:11px;color:#718096">'+H(log[i].ts)+'</td>';
+    h += '<td><span class="ck cp">'+H(log[i].action)+'</span></td>';
+    h += '<td style="font-size:12px">'+H(log[i].detail)+'</td></tr>';
+  }
+  h += '</tbody></table>';
+  if (!AUDIT_LOG.length) { h = '<div style="text-align:center;color:#a0aec0;padding:20px">尚無操作紀錄</div>'; }
+  document.getElementById('audit-b').innerHTML = h;
+  openM('mo-audit');
+}
+
 function loadDB() {
   function t(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch(e) { return []; } }
   DB.so = t('v10so'); DB.po = t('v10po'); DB.sg = t('v10sg');
+  loadAuditLog();
 }
 
 function persist() {
@@ -983,21 +1047,35 @@ function viewSO(idx) {
   openM('mo-sodv');
 }
 
+var soFilter = 'all';
+function soSetFilter(f) {
+  soFilter = f;
+  var btns = { all:'sof-all', wait:'sof-wait', partial_po:'sof-partial' };
+  for (var k in btns) {
+    var el = document.getElementById(btns[k]);
+    if (el) { el.className = 'btn bx ' + (k === f ? 'bp' : 'bw') + ' bx'; el.style.fontSize='11px'; el.style.padding='3px 10px'; }
+  }
+  drawSO();
+}
+
 function drawSO() {
   var q = (document.getElementById('soq').value || '').toLowerCase();
   var h = '';
   for (var a = 0; a < DB.so.length; a++) {
     var s = DB.so[a];
-    var match = !q || s.no.toLowerCase().indexOf(q) !== -1;
-    if (!match) { for (var x = 0; x < (s.items||[]).length; x++) { if (s.items[x].name.toLowerCase().indexOf(q)!==-1||(s.items[x].jan||'').indexOf(q)!==-1){match=true;break;} } }
-    if (!match) { continue; }
-    var fee = soFee(s); var tot = soTotal(s);
-    // 動態計算採購狀態（若尚未進入出貨/到貨/已出貨流程）
+    // 先算採購狀態
     var displayStatus = s.status;
     if (s.status === 'wait' || s.status === 'ordered' || s.status === 'partial_po') {
       displayStatus = getSoPurchaseStatus(s);
       if (s.status !== displayStatus) { s.status = displayStatus; }
     }
+    // 篩選過濾
+    if (soFilter !== 'all' && displayStatus !== soFilter) { continue; }
+    // 文字搜尋
+    var match = !q || s.no.toLowerCase().indexOf(q) !== -1;
+    if (!match) { for (var x = 0; x < (s.items||[]).length; x++) { if (s.items[x].name.toLowerCase().indexOf(q)!==-1||(s.items[x].jan||'').indexOf(q)!==-1){match=true;break;} } }
+    if (!match) { continue; }
+    var fee = soFee(s); var tot = soTotal(s);
     var det = '';
     for (var d = 0; d < (s.items||[]).length; d++) {
       var it2 = s.items[d];
@@ -1048,11 +1126,11 @@ function saveSO() {
   if (!soRows.length || !soRows[0].name) { showToast('請至少新增一項商品'); return; }
   var prev = (soIdx >= 0) ? DB.so[soIdx] : {};
   var obj = { no:no, date:document.getElementById('so-dt').value, freight:N(document.getElementById('so-fr').value), feePct:N(document.getElementById('so-fp').value), items:JSON.parse(JSON.stringify(soRows)), note:document.getElementById('so-nt').value, status:(prev&&prev.status)?prev.status:'wait', dvTrk:(prev&&prev.dvTrk)?prev.dvTrk:'', dvDt:(prev&&prev.dvDt)?prev.dvDt:'' };
-  if (soIdx >= 0) { DB.so[soIdx] = obj; } else { DB.so.push(obj); }
+  if (soIdx >= 0) { DB.so[soIdx] = obj; auditLog('編輯SO', obj.no); } else { DB.so.push(obj); auditLog('新增SO', obj.no + (obj.items[0]?' | '+obj.items[0].name:'')); }
   persist(); closeM('mo-so'); drawSO(); showToast(soIdx >= 0 ? '已更新' : '已新增');
 }
 
-function delSO(i) { if (!confirm('確定刪除？')) { return; } DB.so.splice(i,1); persist(); drawSO(); showToast('已刪除'); }
+function delSO(i) { if (!confirm('確定刪除？')) { return; } auditLog('刪除SO', DB.so[i].no); DB.so.splice(i,1); persist(); drawSO(); showToast('已刪除'); }
 
 function viewPO(idx) {
   var p = DB.po[idx]; if (!p) { return; }
@@ -1222,12 +1300,12 @@ function savePO() {
   if (!poRows.length || !poRows[0].name) { showToast('請至少新增一項商品'); return; }
   var prev = (poIdx >= 0) ? DB.po[poIdx] : {};
   var obj = { no:no, date:document.getElementById('po-dt').value, releaseYear:document.getElementById('po-ry').value, releaseMonth:document.getElementById('po-rm').value, vendor:document.getElementById('po-vn').value, url:document.getElementById('po-ul').value, note:document.getElementById('po-nt').value, items:JSON.parse(JSON.stringify(poRows)), status:(prev&&prev.status)?prev.status:'ordered', trackNo:(prev&&prev.trackNo)?prev.trackNo:'', carrier:(prev&&prev.carrier)?prev.carrier:'', sgNo:(prev&&prev.sgNo)?prev.sgNo:'', shipDt:(prev&&prev.shipDt)?prev.shipDt:'', shipNote:(prev&&prev.shipNote)?prev.shipNote:'' };
-  if (poIdx >= 0) { DB.po[poIdx] = obj; } else { DB.po.push(obj); }
+  if (poIdx >= 0) { DB.po[poIdx] = obj; auditLog('編輯PO', obj.no + ' ' + (obj.vendor||'')); } else { DB.po.push(obj); auditLog('新增PO', obj.no + ' ' + (obj.vendor||'')); }
   for (var i = 0; i < poRows.length; i++) { if (poRows[i].soNo) { for (var j = 0; j < DB.so.length; j++) { if (DB.so[j].no===poRows[i].soNo && (DB.so[j].status==='wait'||DB.so[j].status==='ordered'||DB.so[j].status==='partial_po')){DB.so[j].status=getSoPurchaseStatus(DB.so[j]);} } } }
   persist(); closeM('mo-po'); drawPO(); showToast(poIdx >= 0 ? '已更新' : '已新增');
 }
 
-function delPO(i) { if (!confirm('確定刪除？')) { return; } DB.po.splice(i,1); persist(); drawPO(); showToast('已刪除'); }
+function delPO(i) { if (!confirm('確定刪除？')) { return; } auditLog('刪除PO', DB.po[i].no); DB.po.splice(i,1); persist(); drawPO(); showToast('已刪除'); }
 
 function trkSearch() {
   var q = document.getElementById('trkq').value.toLowerCase();
